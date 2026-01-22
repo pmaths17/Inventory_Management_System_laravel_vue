@@ -20,6 +20,7 @@ class SaleController extends Controller
     public function index()
     {
         $sales = Sale::with('customer')
+            ->withCount('items')
             ->orderBy('sale_date', 'desc')
             ->paginate(15);
 
@@ -39,7 +40,7 @@ class SaleController extends Controller
                     'sale_date' => $request->sale_date,
                     'total_amount' => 0,
                     'status' => 'completed',
-                    'created_by' => 1, // replace with auth()->id() in real app
+                    'created_by' => auth()->guard()->id(), // replace with auth()->id() in real app
                 ]);
 
                 $total = 0;
