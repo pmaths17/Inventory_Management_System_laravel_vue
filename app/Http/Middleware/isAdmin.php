@@ -15,7 +15,7 @@ class isAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        
+        // @phpstan-ignore-next-line
         $user = auth()->user();
         
         if (!$user || !$user->isAdmin()) {

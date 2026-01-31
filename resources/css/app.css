@@ -1,13 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&display=swap');
 /* app.css */
 @import "bootstrap/dist/css/bootstrap.min.css";
 
 
 /* Import FontAwesome (you'll need to install it) */
 @import '@fortawesome/fontawesome-free/css/all.min.css';
+/* 
+
+
+html, body, p, div, h1, h2, h3, h4, h5, h6, span, a, input, button, select, textarea {
+    font-family: "Mona Sans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+/* 3. PROTECT FONT AWESOME - Reset them back to their own font */
+.fa, .fas, .far, .fab, .fa-solid, .fa-regular, .fa-brands, i {
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands", "FontAwesome" !important;
+    font-weight: 900; /* Required for many solid icons to show up */
+}
 
 /* Global Styles */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+body, html {
+  /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
+  /* font-family: "Mona Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; */
   background-color: #f8f9fa;
 }
 

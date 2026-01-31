@@ -1,164 +1,215 @@
 <template>
   <MainLayout>
     <div class="suppliers-page">
+
       <!-- Header -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 class="mb-1 font-weight-bold">Suppliers Management</h2>
-          <p class="text-muted mb-0">Manage your suppliers</p>
+          <h2 class="dashboard-title">Supplier <br> Management</h2>
+          <p class="text-muted small">
+            You have {{ pagination.total }} suppliers
+          </p>
         </div>
-        <button class="btn btn-primary btn-lg shadow-sm" @click="openAddModal">
-          <i class="fas fa-plus mr-2"></i>New Supplier
+        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+          <i class="fas fa-plus mr-2"></i>Add Supplier
         </button>
       </div>
 
       <!-- Search & Sort -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3 mb-md-0">
-              <div class="input-group">
-                <span class="input-group-text bg-white border-end-0">
-                  <i class="fas fa-search text-muted"></i>
-                </span>
-                <input type="text" class="form-control border-start-0"
-                  placeholder="Search by name or phone..."
-                  v-model="searchQuery"
-                  @input="debouncedSearch" />
-              </div>
+      <div class="bento-item p-3 mb-4 bg-white shadow-sm border-0">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-6">
+            <div class="search-wrapper">
+              <i class="fas fa-search text-muted"></i>
+              <input type="text" class="form-control border-0 bg-light rounded-pill" placeholder="Search suppliers..."
+                v-model="searchQuery" @input="debouncedSearch" />
             </div>
-            <div class="col-md-3">
-              <select class="form-control" v-model="sortBy" @change="applyFilters">
-                <option value="name">Sort by Name</option>
-                <option value="date">Sort by Created Date</option>
-              </select>
-            </div>
+          </div>
+
+          <div class="col-md-6 d-flex justify-content-md-end">
+            <select class="form-select border-0 bg-light rounded-pill" v-model="sortBy" @change="applyFilters">
+              <option value="id">Sort: ID</option>
+              <option value="name">Sort: Name</option>
+              <option value="date">Sort: Created Date</option>
+            </select>
           </div>
         </div>
       </div>
 
       <!-- Suppliers Table -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-          <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-3 text-muted">Loading suppliers...</p>
-          </div>
+      <div class="bento-item p-0 bg-white shadow-sm border-0 overflow-hidden">
 
-          <div v-else-if="suppliers.length === 0" class="text-center py-5">
-            <i class="fas fa-truck fa-4x text-muted mb-3"></i>
-            <h5 class="text-muted">No suppliers found</h5>
-            <p class="text-muted">Start by adding a new supplier</p>
-            <button class="btn btn-primary mt-3" @click="openAddModal">
-              <i class="fas fa-plus mr-2"></i>New Supplier
-            </button>
-          </div>
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-grow text-dark"></div>
+          <p class="mt-3 text-muted">Loading suppliers...</p>
+        </div>
 
-          <div v-else class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead class="bg-light">
-                <tr>
-                  <th class="border-0">Supplier ID</th>
-                  <th class="border-0">Name</th>
-                  <th class="border-0">Phone</th>
-                  <th class="border-0">Address</th>
-                  <th class="border-0">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="supplier in filteredSuppliers" :key="supplier.id" class="supplier-row">
-                  <td>#{{ supplier.id }}</td>
-                  <td class="font-weight-bold">{{ supplier.name }}</td>
-                  <td>{{ supplier.phone || 'N/A' }}</td>
-                  <td>{{ supplier.address || 'N/A' }}</td>
-                  <td>
-                    <div class="btn-group" role="group">
-                      <button class="btn btn-sm btn-outline-primary" @click="editSupplier(supplier)" title="Edit">
-                        <i class="fas fa-edit"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger" @click="deleteSupplier(supplier)" title="Delete">
-                        <i class="fas fa-trash"></i>
-                      </button>
+        <div v-else class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr>
+                <th class="ps-4 border-0 text-uppercase small text-muted">Supplier</th>
+                <th class="border-0 text-uppercase small text-muted">Phone</th>
+                <th class="border-0 text-uppercase small text-muted">Address</th>
+                <th class="pe-4 border-0 text-uppercase small text-muted text-end">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="supplier in filteredSuppliers" :key="supplier.id" class="supplier-row">
+                <td class="ps-4">
+                  <div class="d-flex align-items-center">
+                    <div class="supplier-icon-mini me-3">
+                      <i class="fas fa-truck"></i>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                    <div>
+                      <div class="font-weight-bold text-dark">
+                        {{ supplier.name }}
+                      </div>
+                      <small class="text-muted">ID: #{{ supplier.id }}</small>
+                    </div>
+                  </div>
+                </td>
 
-          <!-- Pagination -->
-          <div v-if="pagination.total > 0" class="p-3 border-top">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="text-muted">
-                Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }} suppliers
+                <td>{{ supplier.phone || 'N/A' }}</td>
+                <td>{{ supplier.address || 'N/A' }}</td>
+
+                <td class="pe-4 text-end">
+                  <div class="action-buttons">
+                    <button class="btn-icon view" @click="viewSupplier(supplier)" title="View Details">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-icon edit" @click="editSupplier(supplier)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon delete" @click="deleteSupplier(supplier)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div v-if="filteredSuppliers.length === 0" class="text-center py-5">
+            <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+            <h5>No suppliers found</h5>
+            <p class="text-muted">Try adjusting your search</p>
+          </div>
+        </div>
+
+        <!-- Pagination (UNCHANGED) -->
+        <div v-if="pagination.total > 0" class="p-3 bg-light d-flex justify-content-between align-items-center">
+          <span class="small text-muted ps-2">
+            Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }}
+          </span>
+
+          <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+              <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
+                <button class="page-link rounded-pill px-3" @click="changePage(pagination.current_page - 1)">
+                  <i class="fas fa-chevron-left small"></i>
+                </button>
+              </li>
+
+              <li v-for="page in visiblePages" :key="page" class="page-item"
+                :class="{ active: pagination.current_page === page }">
+                <button class="page-link rounded-circle d-flex align-items-center justify-content-center"
+                  style="width:32px;height:32px" @click="changePage(page)">
+                  {{ page }}
+                </button>
+              </li>
+
+              <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
+                <button class="page-link rounded-pill px-3" @click="changePage(pagination.current_page + 1)">
+                  <i class="fas fa-chevron-right small"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+      </div>
+    </div>
+    <div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+          <div class="modal-header border-0 pt-4 px-4">
+            <h5 class="modal-title fw-bold">
+              {{ form.id ? 'Edit Supplier' : 'Add New Supplier' }}
+            </h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form @submit.prevent="saveSupplier">
+              <div class="mb-3">
+                <label class="small text-muted mb-1">Supplier Name *</label>
+                <input type="text" v-model="form.name" class="form-control bg-light border-0 rounded-pill px-3"
+                  required />
               </div>
-              <nav>
-                <ul class="pagination mb-0">
-                  <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
-                    <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page - 1)">
-                      Previous
-                    </a>
-                  </li>
-                  <li v-for="page in visiblePages" :key="page" class="page-item"
-                    :class="{ active: page === pagination.current_page }">
-                    <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
-                  </li>
-                  <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
-                    <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page + 1)">
-                      Next
-                    </a>
-                  </li>
-                </ul>
-              </nav>
+              <div class="mb-3">
+                <label class="small text-muted mb-1">Phone Number</label>
+                <input type="text" v-model="form.phone" class="form-control bg-light border-0 rounded-pill px-3" />
+              </div>
+              <div class="mb-3">
+                <label class="small text-muted mb-1">Address</label>
+                <textarea v-model="form.address" class="form-control bg-light border-0 rounded-3" rows="3"></textarea>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" @click="closeModal">Cancel</button>
+                <button type="submit" class="btn btn-dark rounded-pill px-4" :disabled="saving">
+                  <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
+                  {{ form.id ? 'Update' : 'Save' }} Supplier
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="viewModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+          <div class="modal-body p-4" v-if="selectedSupplier">
+            <div class="d-flex justify-content-between mb-4">
+              <h5 class="font-weight-bold">Supplier Summary</h5>
+              <button type="button" class="btn-close" @click="closeViewModal"></button>
+            </div>
+
+            <div class="text-center mb-4">
+              <div class="supplier-icon-mini mx-auto mb-3"
+                style="width: 60px; height: 60px; font-size: 1.5rem; background: #f8f9fa;">
+                <i class="fas fa-truck"></i>
+              </div>
+              <h4>{{ selectedSupplier.name }}</h4>
+              <span class="sku-badge">ID: #{{ selectedSupplier.id }}</span>
+            </div>
+
+            <div class="row g-3 text-center">
+              <div class="col-6 p-3 bg-light rounded-start border-end">
+                <small class="text-muted d-block">Phone</small>
+                <strong>{{ selectedSupplier.phone || 'N/A' }}</strong>
+              </div>
+              <div class="col-6 p-3 bg-light rounded-end">
+                <small class="text-muted d-block">Address</small>
+                <strong class="text-truncate d-block px-2">{{ selectedSupplier.address || 'No Address' }}</strong>
+              </div>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-between align-items-center">
+              <button class="btn btn-outline-danger rounded-pill px-4" @click="deleteFromView">
+                <i class="fas fa-trash me-2"></i>Delete
+              </button>
+              <button class="btn btn-dark rounded-pill px-4" @click="editFromView">Edit</button>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Add/Edit Supplier Modal -->
-      <div class="modal fade" id="supplierModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title">
-                <i class="fas fa-truck mr-2"></i>{{ form.id ? 'Edit Supplier' : 'New Supplier' }}
-              </h5>
-            </div>
-            <div class="modal-body">
-              <form @submit.prevent="saveSupplier">
-                <div class="mb-3">
-                  <label class="font-weight-bold">Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" v-model="form.name" required />
-                </div>
-                <div class="mb-3">
-                  <label class="font-weight-bold">Phone</label>
-                  <input type="text" class="form-control" v-model="form.phone" />
-                </div>
-                <div class="mb-3">
-                  <label class="font-weight-bold">Address</label>
-                  <textarea class="form-control" rows="3" v-model="form.address"></textarea>
-                </div>
-
-                <div class="d-flex justify-content-end mt-4">
-                  <button type="button" class="btn btn-secondary mr-2" @click="closeModal">Cancel</button>
-                  <button type="submit" class="btn btn-primary" :disabled="saving">
-                    <span v-if="saving">
-                      <span class="spinner-border spinner-border-sm mr-2"></span>Saving...
-                    </span>
-                    <span v-else>
-                      <i class="fas fa-save mr-2"></i>Save
-                    </span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </MainLayout>
 </template>
+
 
 <script>
 import MainLayout from '@/Layouts/MainLayout.vue';
@@ -170,12 +221,13 @@ export default {
   components: { MainLayout },
   data() {
     return {
+      selectedSupplier: null,
       suppliers: [],
       filteredSuppliers: [],
       loading: false,
       saving: false,
       searchQuery: '',
-      sortBy: 'name',
+      sortBy: 'id',
       pagination: {
         current_page: 1,
         last_page: 1,
@@ -240,6 +292,8 @@ export default {
         filtered.sort((a, b) => a.name.localeCompare(b.name));
       } else if (this.sortBy === 'date') {
         filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      } else if (this.sortBy === 'id') { // NEW
+        filtered.sort((a, b) => a.id - b.id);
       }
 
       this.filteredSuppliers = filtered;
@@ -268,6 +322,28 @@ export default {
       const modalEl = document.getElementById('supplierModal');
       const modal = new Modal(modalEl);
       modal.show();
+    },
+    viewSupplier(supplier) {
+      this.selectedSupplier = supplier;
+      new Modal(document.getElementById('viewModal')).show();
+    },
+
+    closeViewModal() {
+      const modal = Modal.getInstance(document.getElementById('viewModal'));
+      if (modal) modal.hide();
+      this.selectedSupplier = null;
+    },
+
+    editFromView() {
+      const supplierToEdit = this.selectedSupplier;
+      this.closeViewModal();
+      this.editSupplier(supplierToEdit);
+    },
+
+    deleteFromView() {
+      const supplierToDelete = this.selectedSupplier;
+      this.closeViewModal();
+      this.deleteSupplier(supplierToDelete);
     },
 
     async deleteSupplier(supplier) {
@@ -317,12 +393,134 @@ export default {
 </script>
 
 <style scoped>
-.suppliers-page { animation: fadeIn 0.5s; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.suppliers-page {
+  animation: fadeIn 0.5s;
+}
 
-.card { border-radius: 12px; }
-.supplier-row { transition: all 0.3s ease; }
-.supplier-row:hover { background-color: #f8f9fa; transform: translateX(5px); }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 
-.btn-group .btn { border-radius: 6px; margin: 0 2px; }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bento container */
+.bento-item {
+  background: white;
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Page Title */
+.dashboard-title {
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  color: #1a1a1a;
+}
+
+/* Search */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-wrapper i {
+  position: absolute;
+  left: 15px;
+  z-index: 5;
+}
+
+.search-wrapper .form-control {
+  padding-left: 40px;
+  height: 45px;
+}
+
+/* Table Row */
+.supplier-row {
+  transition: all 0.3s ease;
+}
+
+.supplier-row:hover {
+  background-color: #f8f9fa;
+  transform: translateX(5px);
+}
+
+/* Supplier Icon */
+.supplier-icon-mini {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f1f1f;
+  font-size: 1rem;
+}
+
+/* Action Buttons (match products) */
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  margin-left: 4px;
+  transition: 0.2s;
+}
+
+.btn-icon.edit:hover {
+  background: #fff9db;
+  color: #f08c00;
+}
+
+.btn-icon.delete:hover {
+  background: #fff5f5;
+  color: #f03e3e;
+}
+
+/* Pagination */
+.pagination .page-link {
+  border: none;
+  background-color: transparent;
+  color: #6c757d;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #1a1a1a;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.pagination .page-item:not(.active):hover .page-link {
+  background-color: #e9ecef;
+  color: #1a1a1a;
+}
+
+.pagination .page-item.disabled .page-link {
+  opacity: 0.4;
+}
+
+.btn-icon.view:hover {
+  background: #f0f7ff;
+  color: #007bff;
+}
+
+.sku-badge {
+  background: #f0f0f0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666;
+}
 </style>

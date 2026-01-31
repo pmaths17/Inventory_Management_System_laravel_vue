@@ -8,6 +8,8 @@ import api from '@/services/api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 // import '../css/app.css';
+// import '@/css/app.css';
+import '../css/app.css';
 
 // Axios configuration
 //axios.defaults.baseURL = '/api';

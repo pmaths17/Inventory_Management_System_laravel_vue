@@ -4,168 +4,178 @@
       <!-- Header Section -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 class="mb-1 font-weight-bold">Purchases Management</h2>
-          <p class="text-muted mb-0">Manage your inventory purchases</p>
+          <h2 class="dashboard-title">Purchases <br> Management</h2>
+          <p class="text-muted small">You have {{ pagination.total }} purchase records</p>
         </div>
-        <button class="btn btn-primary btn-lg shadow-sm" @click="openAddModal">
+        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>New Purchase
         </button>
       </div>
 
       <!-- Search and Filter Section -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6 mb-3 mb-md-0">
-              <div class="input-group">
-                <span class="input-group-text bg-white border-end-0">
-                  <i class="fas fa-search text-muted"></i>
-                </span>
-                <input type="text" class="form-control border-start-0" placeholder="Search by supplier ..."
-                  v-model="searchQuery" @input="debouncedSearch" />
-              </div>
+      <div class="bento-item p-3 mb-4 bg-white shadow-sm border-0">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-5">
+            <div class="search-wrapper">
+              <i class="fas fa-search text-muted"></i>
+              <input type="text" class="form-control border-0 bg-light rounded-pill" placeholder="Search by supplier..."
+                v-model="searchQuery" @input="debouncedSearch" />
             </div>
-            <div class="col-md-3">
-              <select class="form-control" v-model="supplierFilter" @change="applyFilters">
-                <option value="">All Suppliers</option>
-                <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
-                  {{ supplier.name }}
-                </option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <select class="form-control" v-model="sortBy" @change="applyFilters">
-                <option value="date">Sort by Date</option>
-                <option value="amount">Sort by Amount</option>
-                <option value="supplier">Sort by Supplier</option>
-              </select>
-            </div>
+          </div>
+          <div class="col-md-7 d-flex gap-2 justify-content-md-end">
+            <select class="form-select border-0 bg-light rounded-pill" v-model="supplierFilter" @change="applyFilters">
+              <option value="">All Suppliers</option>
+              <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                {{ supplier.name }}
+              </option>
+            </select>
+            <select class="form-select border-0 bg-light rounded-pill" v-model="sortBy" @change="applyFilters">
+              <option value="id">Sort by ID</option>
+              <option value="date">Sort by Date</option>
+              <option value="amount">Sort by Amount</option>
+              <option value="supplier">Sort by Supplier</option>
+            </select>
           </div>
         </div>
       </div>
 
       <!-- Purchases Table -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-          <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-              <span class="sr-only visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3 text-muted">Loading purchases...</p>
-          </div>
+      <div class="bento-item p-0 bg-white shadow-sm border-0 overflow-hidden">
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-grow text-dark" role="status"></div>
+          <p class="mt-3 text-muted">Loading purchases...</p>
+        </div>
 
-          <div v-else-if="purchases.length === 0" class="text-center py-5">
-            <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
-            <h5 class="text-muted">No purchases found</h5>
-            <p class="text-muted">Start by recording your first purchase</p>
-            <button class="btn btn-primary mt-3" @click="openAddModal">
-              <i class="fas fa-plus mr-2"></i>New Purchase
-            </button>
-          </div>
+        <div v-else-if="purchases.length === 0" class="text-center py-5">
+          <i class="fas fa-shopping-cart mb-3 text-muted" style="font-size: 3rem;"></i>
+          <h5 class="text-muted">No purchases found</h5>
+          <p class="text-muted">Start by recording your first purchase</p>
+          <button class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
+            <i class="fas fa-plus mr-2"></i>New Purchase
+          </button>
+        </div>
 
-          <div v-else class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead class="bg-light">
-                <tr>
-                  <th class="border-0">Purchase ID</th>
-                  <th class="border-0">Supplier</th>
-                  <!-- <th class="border-0">Invoice No</th> -->
-                  <th class="border-0">Date</th>
-                  <th class="border-0">Total Amount</th>
-                  <th class="border-0">Items</th>
-                  <th class="border-0">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="purchase in filteredPurchases" :key="purchase.id" class="purchase-row">
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <div class="purchase-icon mr-3">
-                        <i class="fas fa-shopping-cart"></i>
-                      </div>
-                      <span class="font-weight-bold" style="margin-left: 9px;">#{{ purchase.id }}</span>
+        <div v-else class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr>
+                <th class="ps-4 border-0 text-uppercase small text-muted">Purchase Details</th>
+                <th class="border-0 text-uppercase small text-muted">Supplier</th>
+                <th class="border-0 text-uppercase small text-muted">Date</th>
+                <th class="border-0 text-uppercase small text-muted text-end">Total Amount</th>
+                <th class="border-0 text-uppercase small text-muted text-center">Items</th>
+                <th class="pe-4 border-0 text-uppercase small text-muted text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="purchase in filteredPurchases" :key="purchase.id" class="purchase-row">
+                <td class="ps-4">
+                  <div class="d-flex align-items-center">
+                    <div class="purchase-icon-mini me-3">
+                      <i class="fas fa-shopping-cart"></i>
                     </div>
-                  </td>
-                  <td>
-                    <div class="font-weight-bold">{{ purchase.supplier ? purchase.supplier.name : 'N/A' }}</div>
-                    <small class="text-muted">{{ purchase.supplier ? purchase.supplier.email : '' }}</small>
-                  </td>
-                  <!-- <td>
-                    <span class="badge badge-secondary">{{ purchase.invoice_no || 'N/A' }}</span>
-                  </td> -->
-                  <td>{{ formatDate(purchase.purchase_date) }}</td>
-                  <td class="font-weight-bold text-primary">{{ formatCurrency(purchase.total_amount) }}</td>
-                  <td>
-                    <!-- <span class="badge badge-info">{{ purchase.purchase_items_count || 0 }} items</span> -->
-                    <span class="badge badge-info">{{ purchase.items_count || 0 }} items</span>
-                  </td>
-                  <td>
-                    <div class="btn-group" role="group">
-                      <button class="btn btn-sm btn-outline-primary" @click="viewPurchase(purchase)"
-                        title="View Details">
-                        <i class="fas fa-eye"></i>
-                      </button>
+                    <div>
+                      <div class="font-weight-bold text-dark">#{{ purchase.id }}</div>
+                      <small class="text-muted">Purchase Order</small>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="font-weight-bold">{{ purchase.supplier ? purchase.supplier.name : 'N/A' }}</div>
+                  <small class="text-muted">{{ purchase.supplier ? purchase.supplier.email : '' }}</small>
+                </td>
+                <td>
+                  <span class="text-dark">{{ formatDate(purchase.purchase_date) }}</span>
+                </td>
+                <td class="text-end font-weight-bold text-success">{{ formatCurrency(purchase.total_amount) }}</td>
+                <td class="text-center">
+                  <span class="status-dot badge-success">{{ purchase.items_count || 0 }} items</span>
+                </td>
+                <!-- <td class="text-start">
+                  <div v-if="purchase.items && purchase.items.length">
+                    <ul class="mb-0 p-0" style="list-style: none;">
+                      <li v-for="item in purchase.items" :key="item.id">
+                        {{ item.product.name }} ({{ item.product.sku }}) - {{ item.quantity }}
+                      </li>
+                    </ul>
+                  </div>
+                  <div v-else>
+                    0 items
+                  </div>
+                </td> -->
 
-          <!-- Pagination -->
-          <div v-if="pagination.total > 0" class="p-3 border-top">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="text-muted">
-                Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }} purchases
-              </div>
-              <nav>
-                <ul class="pagination mb-0">
-                  <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
-                    <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page - 1)">
-                      Previous
-                    </a>
-                  </li>
-                  <li v-for="page in visiblePages" :key="page" class="page-item"
-                    :class="{ active: page === pagination.current_page }">
-                    <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
-                  </li>
-                  <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
-                    <a class="page-link" href="#" @click.prevent="changePage(pagination.current_page + 1)">
-                      Next
-                    </a>
-                  </li>
-                </ul>
-              </nav>
-            </div>
-          </div>
+
+                <td class="pe-4 text-end">
+                  <div class="action-buttons">
+                    <button class="btn-icon view" @click="viewPurchase(purchase)" title="View Details">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="pagination.total > 0" class="p-3 bg-light d-flex justify-content-between align-items-center">
+          <span class="small text-muted ps-2">
+            Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }} purchases
+          </span>
+          <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+              <li class="page-item" :class="{ disabled: pagination.current_page === 1 }">
+                <button class="page-link rounded-pill px-3 me-1" @click="changePage(pagination.current_page - 1)">
+                  <i class="fas fa-chevron-left small"></i>
+                </button>
+              </li>
+
+              <li v-for="page in visiblePages" :key="page" class="page-item"
+                :class="{ active: page === pagination.current_page }">
+                <button class="page-link rounded-circle d-flex align-items-center justify-content-center"
+                  style="width: 32px; height: 32px;" @click="changePage(page)">
+                  {{ page }}
+                </button>
+              </li>
+
+              <li class="page-item" :class="{ disabled: pagination.current_page === pagination.last_page }">
+                <button class="page-link rounded-pill px-3 ms-1" @click="changePage(pagination.current_page + 1)">
+                  <i class="fas fa-chevron-right small"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
         </div>
       </div>
 
       <!-- Add Purchase Modal -->
       <div class="modal fade" id="purchaseModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-xl" role="document">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+          <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+              <h5 class="modal-title font-weight-bold">
                 <i class="fas fa-shopping-cart mr-2"></i>New Purchase
               </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" @click="closeModal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
               <form @submit.prevent="savePurchase">
                 <!-- Purchase Header Info -->
-                <div class="row mb-4">
-                  <div class="col-md-4 mb-3">
-                    <label class="font-weight-bold">Supplier <span class="text-danger">*</span></label>
-                    <select class="form-control" v-model="form.supplier_id" required>
+                <div class="row mb-4 g-3">
+                  <div class="col-md-6">
+                    <label class="small text-muted mb-1">Supplier <span class="text-danger">*</span></label>
+                    <select class="form-select bg-light border-0 rounded-pill px-3" v-model="form.supplier_id" required
+                      style="height: 45px;">
                       <option value="">Select Supplier</option>
                       <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
                         {{ supplier.name }}
                       </option>
                     </select>
                   </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="font-weight-bold">Purchase Date <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" v-model="form.purchase_date" required />
+                  <div class="col-md-6">
+                    <label class="small text-muted mb-1">Purchase Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control bg-light border-0 rounded-pill px-3"
+                      v-model="form.purchase_date" required style="height: 45px;" />
                   </div>
                 </div>
 
@@ -173,27 +183,27 @@
                 <div class="mb-4">
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="font-weight-bold mb-0">Purchase Items</h6>
-                    <button type="button" class="btn btn-sm btn-success" @click="addItem">
+                    <button type="button" class="btn btn-sm btn-dark rounded-pill px-3" @click="addItem">
                       <i class="fas fa-plus mr-1"></i>Add Item
                     </button>
                   </div>
 
                   <div class="table-responsive">
-                    <table class="table table-bordered">
+                    <table class="table table-bordered align-middle">
                       <thead class="bg-light">
                         <tr>
-                          <th style="width: 40%">Product</th>
-                          <th style="width: 15%">Quantity</th>
-                          <th style="width: 20%">Unit Price</th>
-                          <th style="width: 20%">Subtotal</th>
+                          <th style="width: 40%" class="text-uppercase small">Product</th>
+                          <th style="width: 15%" class="text-uppercase small">Quantity</th>
+                          <th style="width: 20%" class="text-uppercase small">Unit Price</th>
+                          <th style="width: 20%" class="text-uppercase small">Subtotal</th>
                           <th style="width: 5%"></th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr v-for="(item, index) in form.items" :key="index">
                           <td>
-                            <select class="form-control form-control-sm" v-model="item.product_id"
-                              @change="updateProductPrice(index)" required>
+                            <select class="form-select form-select-sm bg-light border-0 rounded-pill"
+                              v-model="item.product_id" @change="updateProductPrice(index)" required>
                               <option value="">Select Product</option>
                               <option v-for="product in products" :key="product.id" :value="product.id">
                                 {{ product.name }} ({{ product.sku }})
@@ -201,30 +211,21 @@
                             </select>
                           </td>
                           <td>
-                            <input type="number" class="form-control form-control-sm" v-model.number="item.quantity"
-                              @input="calculateSubtotal(index)" min="1" required />
+                            <input type="number" class="form-control form-control-sm bg-light border-0 rounded-pill"
+                              v-model.number="item.quantity" @input="calculateSubtotal(index)" min="1" required />
                           </td>
                           <td>
-                            <!-- <input
-                              type="number"
-                              step="0.01"
-                              class="form-control form-control-sm"
-                              v-model.number="item.unit_price"
-                              @input="calculateSubtotal(index)"
-                              min="0"
-                              required
-                            /> -->
-                            <div class="form-control form-control-sm bg-light text-right">
+                            <div class="form-control form-control-sm bg-light border-0 rounded-pill text-end">
                               {{ formatCurrency(item.unit_price) }}
                             </div>
                           </td>
                           <td>
-                            <div class="font-weight-bold pt-2">
+                            <div class="font-weight-bold pt-2 text-end">
                               {{ formatCurrency(item.subtotal || 0) }}
                             </div>
                           </td>
                           <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-outline-danger" @click="removeItem(index)"
+                            <button type="button" class="btn btn-sm btn-icon delete" @click="removeItem(index)"
                               :disabled="form.items.length === 1">
                               <i class="fas fa-trash"></i>
                             </button>
@@ -233,8 +234,8 @@
                       </tbody>
                       <tfoot class="bg-light">
                         <tr>
-                          <td colspan="3" class="text-right font-weight-bold">Total Amount:</td>
-                          <td colspan="2" class="font-weight-bold text-primary">
+                          <td colspan="3" class="text-end font-weight-bold">Total Amount:</td>
+                          <td colspan="2" class="font-weight-bold text-success text-end">
                             {{ formatCurrency(calculateTotal()) }}
                           </td>
                         </tr>
@@ -243,11 +244,9 @@
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-end mt-4">
-                  <button type="button" class="btn btn-secondary mr-2" @click="closeModal">
-                    Cancel
-                  </button>
-                  <button type="submit" class="btn btn-primary" :disabled="saving || form.items.length === 0">
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                  <button type="submit" class="btn btn-dark rounded-pill px-4"
+                    :disabled="saving || form.items.length === 0">
                     <span v-if="saving">
                       <span class="spinner-border spinner-border-sm mr-2"></span>
                       Saving...
@@ -266,32 +265,35 @@
 
       <!-- View Purchase Modal -->
       <div class="modal fade" id="viewModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-xl" role="document">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-info text-white">
-              <h5 class="modal-title">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+          <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+              <h5 class="modal-title font-weight-bold">
                 <i class="fas fa-info-circle mr-2"></i>Purchase Details
               </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" @click="closeViewModal"></button>
             </div>
-            <div class="modal-body" v-if="selectedPurchase">
+            <div class="modal-body p-4" v-if="selectedPurchase">
               <!-- Purchase Header -->
-              <div class="row mb-4">
-                <div class="col-md-3">
-                  <label class="text-muted small">Purchase ID</label>
-                  <p class="font-weight-bold">#{{ selectedPurchase.id }}</p>
+              <div class="row mb-4 g-3">
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <label class="text-muted small d-block mb-1">Purchase ID</label>
+                    <p class="font-weight-bold mb-0">#{{ selectedPurchase.id }}</p>
+                  </div>
                 </div>
-                <div class="col-md-3">
-                  <label class="text-muted small">Supplier</label>
-                  <p class="font-weight-bold">{{ selectedPurchase.supplier ? selectedPurchase.supplier.name : 'N/A' }}
-                  </p>
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <label class="text-muted small d-block mb-1">Supplier</label>
+                    <p class="font-weight-bold mb-0">{{ selectedPurchase.supplier ? selectedPurchase.supplier.name :
+                      'N/A' }}</p>
+                  </div>
                 </div>
-                <!-- <div class="col-md-3">
-                  <label class="text-muted small">Invoice No</label>
-                  <p><span class="badge badge-secondary">{{ selectedPurchase.invoice_no || 'N/A' }}</span></p>
-                </div> -->
-                <div class="col-md-3">
-                  <label class="text-muted small">Purchase Date</label>
-                  <p class="font-weight-bold">{{ formatDate(selectedPurchase.purchase_date) }}</p>
+                <div class="col-md-4">
+                  <div class="p-3 bg-light rounded">
+                    <label class="text-muted small d-block mb-1">Purchase Date</label>
+                    <p class="font-weight-bold mb-0">{{ formatDate(selectedPurchase.purchase_date) }}</p>
+                  </div>
                 </div>
               </div>
 
@@ -299,31 +301,29 @@
               <div class="mb-4">
                 <h6 class="font-weight-bold mb-3">Items Purchased</h6>
                 <div class="table-responsive">
-                  <table class="table table-bordered">
+                  <table class="table table-bordered align-middle">
                     <thead class="bg-light">
                       <tr>
-                        <th>Product</th>
-                        <th>SKU</th>
-                        <th class="text-right">Quantity</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Subtotal</th>
+                        <th class="text-uppercase small">Product</th>
+                        <th class="text-uppercase small">SKU</th>
+                        <th class="text-uppercase small text-end">Quantity</th>
+                        <th class="text-uppercase small text-end">Unit Price</th>
+                        <th class="text-uppercase small text-end">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="item in selectedPurchase.items" :key="item.id">
                         <td>{{ item.product ? item.product.name : 'N/A' }}</td>
-                        <td><span class="badge badge-secondary">{{ item.product ? item.product.sku : 'N/A' }}</span>
-                        </td>
-                        <td class="text-right">{{ item.quantity }}</td>
-                        <td class="text-right">{{ formatCurrency(item.price) }}</td>
-                        <td class="text-right font-weight-bold">{{ formatCurrency(item.quantity * item.price) }}
-                        </td>
+                        <td><span class="sku-badge">{{ item.product ? item.product.sku : 'N/A' }}</span></td>
+                        <td class="text-end">{{ item.quantity }}</td>
+                        <td class="text-end">{{ formatCurrency(item.price) }}</td>
+                        <td class="text-end font-weight-bold">{{ formatCurrency(item.quantity * item.price) }}</td>
                       </tr>
                     </tbody>
                     <tfoot class="bg-light">
                       <tr>
-                        <td colspan="4" class="text-right font-weight-bold">Total Amount:</td>
-                        <td class="text-right font-weight-bold text-primary">
+                        <td colspan="4" class="text-end font-weight-bold">Total Amount:</td>
+                        <td class="text-end font-weight-bold text-success">
                           {{ formatCurrency(selectedPurchase.total_amount) }}
                         </td>
                       </tr>
@@ -332,26 +332,24 @@
                 </div>
               </div>
 
-              <!-- Notes -->
-              <!-- <div v-if="selectedPurchase.notes" class="mb-3">
-                <label class="text-muted small">Notes</label>
-                <p>{{ selectedPurchase.notes }}</p>
-              </div> -->
-
               <!-- Timestamps -->
-              <div class="row">
+              <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="text-muted small">Created At</label>
-                  <p>{{ formatDateTime(selectedPurchase.created_at) }}</p>
+                  <div class="p-3 bg-light rounded">
+                    <label class="text-muted small d-block mb-1">Created At</label>
+                    <p class="mb-0">{{ formatDateTime(selectedPurchase.created_at) }}</p>
+                  </div>
                 </div>
                 <div class="col-md-6">
-                  <label class="text-muted small">Last Updated</label>
-                  <p>{{ formatDateTime(selectedPurchase.updated_at) }}</p>
+                  <div class="p-3 bg-light rounded">
+                    <label class="text-muted small d-block mb-1">Last Updated</label>
+                    <p class="mb-0">{{ formatDateTime(selectedPurchase.updated_at) }}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeViewModal">Close</button>
+            <div class="modal-footer border-0">
+              <button type="button" class="btn btn-dark rounded-pill px-4" @click="closeViewModal">Close</button>
             </div>
           </div>
         </div>
@@ -378,7 +376,8 @@ export default {
       saving: false,
       searchQuery: '',
       supplierFilter: '',
-      sortBy: 'date',
+      // sortBy: 'date',
+      sortBy: 'id',
       pagination: {
         current_page: 1,
         last_page: 1,
@@ -388,7 +387,6 @@ export default {
       },
       form: {
         supplier_id: '',
-        //invoice_no: '',
         purchase_date: new Date().toISOString().split('T')[0],
         items: [
           {
@@ -466,7 +464,6 @@ export default {
     applyFilters() {
       let filtered = [...this.purchases];
 
-      // Search filter
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         filtered = filtered.filter(p =>
@@ -475,177 +472,173 @@ export default {
         );
       }
 
-      // Supplier filter
       if (this.supplierFilter) {
         filtered = filtered.filter(p => p.supplier_id == this.supplierFilter);
       }
 
-      // Sorting
-      if (this.sortBy === 'amount') {
-        filtered.sort((a, b) => b.total_amount - a.total_amount);
-      } else if (this.sortBy === 'supplier') {
-        filtered.sort((a, b) => {
-          const nameA = a.supplier ? a.supplier.name : '';
-          const nameB = b.supplier ? b.supplier.name : '';
-          return nameA.localeCompare(nameB);
-        });
-      } else {
-        filtered.sort((a, b) => new Date(b.purchase_date) - new Date(a.purchase_date));
-      }
+      if (this.sortBy === 'id') {
+        filtered.sort((a, b) => b.id - a.id); // latest ID first
+      } else if (this.sortBy === 'amount') {
+          filtered.sort((a, b) => b.total_amount - a.total_amount);
+        } else if (this.sortBy === 'supplier') {
+          filtered.sort((a, b) => {
+            const nameA = a.supplier ? a.supplier.name : '';
+            const nameB = b.supplier ? b.supplier.name : '';
+            return nameA.localeCompare(nameB);
+          });
+        } else {
+          filtered.sort((a, b) => new Date(b.purchase_date) - new Date(a.purchase_date));
+        }
 
-      // this.purchases = filtered;
-      this.filteredPurchases = filtered;
-    },
+        this.filteredPurchases = filtered;
+      },
 
-    debouncedSearch() {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(() => {
-        this.applyFilters();
-      }, 300);
-    },
+      debouncedSearch() {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+          this.applyFilters();
+        }, 300);
+      },
 
-    changePage(page) {
-      if (page >= 1 && page <= this.pagination.last_page) {
-        this.fetchPurchases(page);
-      }
-    },
+      changePage(page) {
+        if (page >= 1 && page <= this.pagination.last_page) {
+          this.fetchPurchases(page);
+        }
+      },
 
-    openAddModal() {
-      this.resetForm();
-      const modalEl = document.getElementById('purchaseModal');
-      const modal = new Modal(modalEl);
-      modal.show();
-    },
-
-    async viewPurchase(purchase) {
-      try {
-        const response = await api.get(`/purchases/${purchase.id}`);
-        this.selectedPurchase = response.data;
-        const modalEl = document.getElementById('viewModal');
+      openAddModal() {
+        this.resetForm();
+        const modalEl = document.getElementById('purchaseModal');
         const modal = new Modal(modalEl);
         modal.show();
-      } catch (error) {
-        console.error('Error fetching purchase details:', error);
-        alert('Failed to load purchase details');
-      }
-    },
+      },
 
-    addItem() {
-      this.form.items.push({
-        product_id: '',
-        quantity: 1,
-        unit_price: 0,
-        subtotal: 0
-      });
-    },
+    async viewPurchase(purchase) {
+        try {
+          const response = await api.get(`/purchases/${purchase.id}`);
+          this.selectedPurchase = response.data;
+          const modalEl = document.getElementById('viewModal');
+          const modal = new Modal(modalEl);
+          modal.show();
+        } catch (error) {
+          console.error('Error fetching purchase details:', error);
+          alert('Failed to load purchase details');
+        }
+      },
 
-    removeItem(index) {
-      if (this.form.items.length > 1) {
-        this.form.items.splice(index, 1);
-      }
-    },
+      addItem() {
+        this.form.items.push({
+          product_id: '',
+          quantity: 1,
+          unit_price: 0,
+          subtotal: 0
+        });
+      },
 
-    updateProductPrice(index) {
-      const item = this.form.items[index];
-      const product = this.products.find(p => p.id == item.product_id);
-      if (product) {
-        item.unit_price = parseFloat(product.purchase_price) || 0;
-        this.calculateSubtotal(index);
-      }
-    },
+      removeItem(index) {
+        if (this.form.items.length > 1) {
+          this.form.items.splice(index, 1);
+        }
+      },
 
-    calculateSubtotal(index) {
-      const item = this.form.items[index];
-      item.subtotal = (item.quantity || 0) * (item.unit_price || 0);
-    },
+      updateProductPrice(index) {
+        const item = this.form.items[index];
+        const product = this.products.find(p => p.id == item.product_id);
+        if (product) {
+          item.unit_price = parseFloat(product.purchase_price) || 0;
+          this.calculateSubtotal(index);
+        }
+      },
 
-    calculateTotal() {
-      return this.form.items.reduce((total, item) => total + (item.subtotal || 0), 0);
-    },
+      calculateSubtotal(index) {
+        const item = this.form.items[index];
+        item.subtotal = (item.quantity || 0) * (item.unit_price || 0);
+      },
+
+      calculateTotal() {
+        return this.form.items.reduce((total, item) => total + (item.subtotal || 0), 0);
+      },
 
     async savePurchase() {
-      this.saving = true;
-      try {
-        const purchaseData = {
-          supplier_id: this.form.supplier_id,
-          // invoice_no: this.form.invoice_no,
-          purchase_date: this.form.purchase_date,
-          // notes: this.form.notes,
-          items: this.form.items.map(item => ({
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: item.unit_price
-          }))
+        this.saving = true;
+        try {
+          const purchaseData = {
+            supplier_id: this.form.supplier_id,
+            purchase_date: this.form.purchase_date,
+            items: this.form.items.map(item => ({
+              product_id: item.product_id,
+              quantity: item.quantity,
+              price: item.unit_price
+            }))
+          };
+
+          await api.post('/purchases', purchaseData);
+          alert('Purchase created successfully!');
+          this.closeModal();
+          this.fetchPurchases(this.pagination.current_page);
+        } catch (error) {
+          console.error('Error saving purchase:', error);
+          alert('Failed to save purchase. Please check all fields.');
+        } finally {
+          this.saving = false;
+        }
+      },
+
+      closeModal() {
+        const modalEl = document.getElementById('purchaseModal');
+        const modal = Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        this.resetForm();
+      },
+
+      closeViewModal() {
+        const modalEl = document.getElementById('viewModal');
+        const modal = Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        this.selectedPurchase = null;
+      },
+
+      resetForm() {
+        this.form = {
+          supplier_id: '',
+          purchase_date: new Date().toISOString().split('T')[0],
+          items: [
+            {
+              product_id: '',
+              quantity: 1,
+              unit_price: 0,
+              subtotal: 0
+            }
+          ]
         };
+      },
 
-        await api.post('/purchases', purchaseData);
-        alert('Purchase created successfully!');
-        this.closeModal();
-        this.fetchPurchases(this.pagination.current_page);
-      } catch (error) {
-        console.error('Error saving purchase:', error);
-        alert('Failed to save purchase. Please check all fields.');
-      } finally {
-        this.saving = false;
+      formatCurrency(amount) {
+        return new Intl.NumberFormat('en-PK', {
+          style: 'currency',
+          currency: 'PKR'
+        }).format(amount);
+      },
+
+      formatDate(date) {
+        return new Date(date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      },
+
+      formatDateTime(datetime) {
+        return new Date(datetime).toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
       }
-    },
-
-    closeModal() {
-      const modalEl = document.getElementById('purchaseModal');
-      const modal = Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-      this.resetForm();
-    },
-
-    closeViewModal() {
-      const modalEl = document.getElementById('viewModal');
-      const modal = Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-      this.selectedPurchase = null;
-    },
-
-    resetForm() {
-      this.form = {
-        supplier_id: '',
-        invoice_no: '',
-        purchase_date: new Date().toISOString().split('T')[0],
-        items: [
-          {
-            product_id: '',
-            quantity: 1,
-            unit_price: 0,
-            subtotal: 0
-          }
-        ]
-      };
-    },
-
-    formatCurrency(amount) {
-      return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR'
-      }).format(amount);
-    },
-
-    formatDate(date) {
-      return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    },
-
-    formatDateTime(datetime) {
-      return new Date(datetime).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
     }
-  }
-};
+  };
 </script>
 
 <style scoped>
@@ -665,8 +658,37 @@ export default {
   }
 }
 
-.card {
-  border-radius: 12px;
+/* Bento Grid Item Base */
+.bento-item {
+  background: white;
+  border-radius: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Page Title Style */
+.dashboard-title {
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  color: #1a1a1a;
+}
+
+/* Search Wrapper */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-wrapper i {
+  position: absolute;
+  left: 15px;
+  z-index: 5;
+}
+
+.search-wrapper .form-control {
+  padding-left: 40px;
+  height: 45px;
 }
 
 .purchase-row {
@@ -678,59 +700,120 @@ export default {
   transform: translateX(5px);
 }
 
-.purchase-icon {
+/* .purchase-icon-mini {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1.2rem;
+  font-size: 1rem;
+} */
+.purchase-icon-mini {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  font-size: 1rem;
+
 }
 
-.btn-group .btn {
+/* Ensure the row hover still feels consistent */
+.purchase-row:hover .purchase-icon-mini {
+  background: #e9ecef;
+  transition: background 0.2s ease;
+}
+
+.sku-badge {
+  background: #e9ecef;
+  padding: 4px 10px;
   border-radius: 6px;
-  margin: 0 2px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #495057;
 }
 
-.input-group-text {
-  border-right: 0;
+/* Status Badges */
+.status-dot {
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.form-control:focus {
-  box-shadow: 0 0 0 0.2rem rgba(230, 233, 235, 0.25);
+.badge-success {
+  background: #e6fcf5;
+  color: #0ca678 !important;
 }
 
-.badge {
-  padding: 6px 12px;
-  font-weight: 500;
-  color: #212529 !important;
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
-.badge-secondary {
-  background-color: #6c757d !important;
-  color: #fff !important;
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.badge-info {
-  background-color: #17a2b8 !important;
-  color: #fff !important;
+.btn-icon.view:hover {
+  background: #f0f7ff;
+  color: #007bff;
 }
 
-.modal-content {
-  border-radius: 12px;
+.btn-icon.delete:hover {
+  background: #fff5f5;
+  color: #f03e3e;
 }
 
+/* Form Select Styling */
+.form-select {
+  height: 45px;
+  font-size: 0.9rem;
+  padding: 0 20px;
+  cursor: pointer;
+}
+
+/* Modern Pagination */
 .pagination .page-link {
-  border-radius: 6px;
-  margin: 0 3px;
+  border: none;
+  background-color: transparent;
+  color: #6c757d;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .pagination .page-item.active .page-link {
-  background-color: #007bff;
-  border-color: #007bff;
+  background-color: #1a1a1a;
+  color: #fff !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.pagination .page-item:not(.active):hover .page-link {
+  background-color: #e9ecef;
+  color: #1a1a1a;
+}
+
+.pagination .page-item.disabled .page-link {
+  background-color: transparent;
+  opacity: 0.4;
+}
+
+.modal-content {
+  border-radius: 20px;
 }
 
 .table-bordered {

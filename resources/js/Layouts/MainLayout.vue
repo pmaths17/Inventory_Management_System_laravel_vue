@@ -1,82 +1,45 @@
 <template>
   <div class="d-flex vh-100">
-    <!-- Sidebar -->
-    <nav class="sidebar bg-dark text-white" style="width: 250px; overflow-y: auto;">
-      <div class="sidebar-header p-4 border-bottom border-secondary">
-        <h3 class="mb-0 font-weight-bold">
-          <i class="fas fa-boxes mr-2"></i>IMS
-        </h3>
-        <small class="text-white">Inventory Management</small>
+    <nav class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
+      <div class="sidebar-header">
+        <button class="collapse-btn" @click="toggleSidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h3 v-if="!isSidebarCollapsed" class="logo">IMS</h3>
       </div>
 
-      <ul class="nav flex-column p-3">
-        <li class="nav-item mb-2">
-          <router-link to="/dashboard" class="nav-link text-white" exact-active-class="active">
-            <i class="fas fa-chart-line mr-2"></i>Dashboard
-          </router-link>
-        </li>
-
-        <li class="nav-item mb-2">
-          <router-link to="/products" class="nav-link text-white" active-class="active">
-            <i class="fas fa-box mr-2"></i>Products
-          </router-link>
-        </li>
-
-        <li class="nav-item mb-2">
-          <router-link to="/purchases" class="nav-link text-white" active-class="active">
-            <i class="fas fa-shopping-cart mr-2"></i>Purchases
-          </router-link>
-        </li>
-
-        <li class="nav-item mb-2">
-          <router-link to="/sales" class="nav-link text-white" active-class="active">
-            <i class="fas fa-cash-register mr-2"></i>Sales
-          </router-link>
-        </li>
-
-        <li class="nav-item mb-2">
-          <router-link to="/customers" class="nav-link text-white" active-class="active">
-            <i class="fas fa-users mr-2"></i>Customers
-          </router-link>
-        </li>
-
-        <li class="nav-item mb-2">
-          <router-link to="/suppliers" class="nav-link text-white" active-class="active">
-            <i class="fas fa-truck mr-2"></i>Suppliers
+      <ul class="nav flex-column">
+        <li class="nav-item" v-for="item in menu" :key="item.label">
+          <router-link :to="item.to" class="nav-link" active-class="active">
+            <i :class="item.icon"></i>
+            <span v-if="!isSidebarCollapsed">{{ item.label }}</span>
           </router-link>
         </li>
       </ul>
+
+      <div class="p-3 mt-auto">
+        <button class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center"
+          @click="handleLogout" :disabled="loggingOut" style="min-height: 45px;">
+          <span v-if="loggingOut">
+            <span class="spinner-border spinner-border-sm"></span>
+          </span>
+          <span v-else class="d-flex align-items-center gap-2">
+            <i class="fas fa-sign-out-alt"></i>
+            <span v-if="!isSidebarCollapsed">Logout</span>
+          </span>
+        </button>
+      </div>
     </nav>
 
-    <!-- Main Content Area -->
-    <div class="flex-fill d-flex flex-column">
-      <!-- Top Navbar -->
-      <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-        <div class="container-fluid">
-          <span class="navbar-text font-weight-bold">
-            {{ $route.name }}
-          </span>
-          <div class="ml-auto d-flex align-items-center">
-            <span class="mr-3">
-              <i class="fas fa-user-circle fa-lg"></i>
-              <span class="ml-2">{{ userName }}</span>
-            </span>
-            <button class="btn btn-outline-danger btn-sm ml-3" @click="handleLogout" :disabled="loggingOut"
-              style="margin-left:7px">
-              <span v-if="loggingOut">
-                <span class="spinner-border spinner-border-sm mr-1"></span>
-                Logging out...
-              </span>
-              <span v-else>
-                <i class="fas fa-sign-out-alt mr-1"></i>Logout
-              </span>
-            </button>
-          </div>
+    <!-- <div class="flex-fill d-flex flex-column">
+      <div class="flex-fill overflow-auto" style="background-color: #181818; padding: 1rem;">
+        <div class="page-container">
+          <slot></slot>
         </div>
-      </nav>
-
-      <!-- Page Content -->
-      <div class="flex-fill p-4 bg-light overflow-auto">
+      </div>
+    </div> -->
+    <div class="main-content">
+      <div class="content-wrapper">
         <slot></slot>
       </div>
     </div>
@@ -90,81 +53,224 @@ export default {
   name: 'MainLayout',
   data() {
     return {
-      loggingOut: false
+      loggingOut: false,
+      isSidebarCollapsed: localStorage.getItem('sidebarStatus') === 'true',
+      user: JSON.parse(localStorage.getItem('user') || '{}')
     };
   },
   computed: {
-    userName() {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      return user.name || '';
+    menu() {
+      const items = [
+        { to: '/dashboard', label: 'Dashboard', icon: 'fas fa-chart-line' },
+        { to: '/products', label: 'Products', icon: 'fas fa-box' },
+        { to: '/purchases', label: 'Purchases', icon: 'fas fa-shopping-cart' },
+        { to: '/sales', label: 'Sales', icon: 'fas fa-cash-register' },
+        { to: '/customers', label: 'Customers', icon: 'fas fa-users' },
+        { to: '/suppliers', label: 'Suppliers', icon: 'fas fa-truck' },
+      ];
+
+      if (this.user.role === 'admin') {
+        items.push({ to: '/reports', label: 'Reports', icon: 'fas fa-file-invoice-dollar' });
+        items.push({ to: '/users', label: 'Manage Staff', icon: 'fas fa-user-shield' });
+      }
+
+      return items;
     }
   },
+  // EVERYTHING BELOW MUST BE INSIDE METHODS
   methods: {
+    toggleSidebar() {
+      this.isSidebarCollapsed = !this.isSidebarCollapsed;
+      localStorage.setItem('sidebarStatus', this.isSidebarCollapsed);
+    },
     async handleLogout() {
       this.loggingOut = true;
-
-      // try {
-      //   // Call logout API to revoke token on server
-      //   await api.post('/logout');
-      //   console.log('Logout successful');
-      // } catch (error) {
-      //   console.error('Logout error:', error);
-      //   // Continue with logout even if API call fails
-      // } finally {
-      //   // Clear localStorage
-      //   localStorage.removeItem('token');
-      //   localStorage.removeItem('user');
-
-      //   // Remove axios authorization header
-      //   delete api.defaults.headers.common['Authorization'];
-
-      //   // Redirect to login
-      //   this.$router.replace('/login');
-
-      //   this.loggingOut = false;
-      // }
       try {
         await api.post('/logout');
       } catch (error) {
         console.error('Logout error:', error);
       } finally {
-        // ONLY clear user (no tokens!)
         localStorage.removeItem('user');
-        // Remove axios headers if you set any
-        delete api.defaults.headers.common['Authorization'];
-
-        // Redirect
         this.$router.replace('/login');
-
         this.loggingOut = false;
       }
     }
-  }
+  } // End of methods
 };
 </script>
 
 <style scoped>
 .sidebar {
+  background-color: #181818;
+  /* #121212;  modern dark */
+  color: #fff;
+  width: 250px;
   min-height: 100vh;
+  transition: width 0.25s ease;
+  overflow: hidden;
+   position: sticky;
 }
 
-.sidebar .nav-link {
-  border-radius: 8px;
+.sidebar.collapsed {
+  width: 72px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.logo {
+  margin-left: 12px;
+  font-weight: 700;
+}
+
+.nav-link {
+  position: relative;
+  color: #cfcfcf;
   padding: 12px 16px;
-  transition: all 0.3s ease;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 4px;
+  /* Slightly sharper edges to match image */
+  margin: 4px 0px;
+  /* Removed side margins to allow indicator to touch the edge */
+  transition: all 0.2s ease;
+  text-decoration: none;
 }
 
-.sidebar .nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.nav-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.sidebar .nav-link.active {
-  background-color: #007bff;
-  color: white !important;
+/* The Active State Styling */
+.nav-link.active {
+  color: #ffffff;
+  /* Soft white gradient background for the whole tab */
+  background: linear-gradient(to right,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%);
 }
 
-.navbar {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* The White Vertical Indicator */
+.nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 4px;
+  background: #ffffff;
+  border-radius: 0 4px 4px 0;
+  /* Glow effect */
+  box-shadow: 2px 0px 10px rgba(255, 255, 255, 0.5);
+}
+
+.nav-link i {
+  color: #ffffff;
+  font-size: 18px;
+  opacity: 0.8;
+  /* Dimmed slightly when not active */
+}
+
+.nav-link.active i {
+  opacity: 1;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+
+/* .page-container {
+  background-color: #f3f5ed;
+  border-radius: 20px;
+  padding: 2rem;
+
+  width: calc(100% - 10px);
+  max-width: 100%;
+
+  min-height: calc(100vh - 2rem);
+  margin-left: 0;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+} */
+
+
+/* .flex-fill.overflow-auto {
+  padding: 1rem 1rem 1rem 0.5rem !important;
+  transition: all 0.25s ease;
+} */
+
+
+.sidebar.collapsed .btn-outline-light {
+  padding: 10px 0;
+  border: none;
+}
+
+.sidebar.collapsed .btn-outline-light i {
+  margin: 0;
+  font-size: 20px;
+}
+
+.flex-fill {
+  transition: all 0.25s ease;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.sidebar.collapsed .nav-link i {
+  margin: 0;
+}
+/* ---------------------------- */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #181818;
+  padding: 1rem 1rem 1rem 0.5rem;
+  overflow: hidden; /* KEY: Prevents the main area from scrolling */
+  height: 100vh;
+}
+
+.content-wrapper {
+  background-color: #f3f5ed;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  overflow-y: auto; /* KEY: Makes ONLY the content scrollable */
+  overflow-x: hidden;
+  height: 100%;
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+.content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
 }
 </style>

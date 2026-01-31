@@ -30,4 +30,6 @@ Route::middleware('auth')->group(function () {
 // require __DIR__.'/auth.php';
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->get('/user', fn (Request $r) => $r->user());
-
+Route::get('/{any}', function () {
+    return view('app'); // Or whatever your main blade file is named
+})->where('any', '.*');

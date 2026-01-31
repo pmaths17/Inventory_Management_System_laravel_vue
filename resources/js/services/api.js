@@ -10,6 +10,17 @@ const api = axios.create({//variable holding the axios instance
         'X-Requested-With': 'XMLHttpRequest',
     },
 });
+// api.interceptors.response.use(
+//   response => response,
+//   error => {
+//     if (error.response && error.response.status === 403) {
+//       alert("Access Denied: You do not have permission to view this page.");
+//       // Optionally redirect them back to dashboard
+//       window.location.href = '/dashboard';
+//     }
+//     return Promise.reject(error);
+//   }
+// );
 // // Add token if logged in
 // api.interceptors.request.use(config => { //interceptor:Axios object that allows running function before requests or after responses
 //     //request: to execute before each request 

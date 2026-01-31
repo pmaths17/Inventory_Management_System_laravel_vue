@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class PurchaseItem extends Model
 {
     use HasFactory;
-    protected $fillable=['purchase_id','product_id','quantity','price','subtotal'];
+    protected $fillable=['purchase_id','product_id','quantity','quantity_remaining','price','subtotal'];
     public function purchase(){
         return $this->belongsTo(Purchase::class);
     }

@@ -1,101 +1,67 @@
 <template>
   <main-layout>
-    <div class="dashboard">
-      <h2 class="mb-4 font-weight-bold">Dashboard Overview</h2>
-
-      <!-- Stats Cards Row -->
-      <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-          <stats-card title="Total Products" :value="stats.totalProducts" icon="fas fa-boxes" color="primary"/>
-        </div>
-
-        <div class="col-md-3 mb-3">
-          <stats-card title="Total Sales" :value="formatCurrency(stats.totalSales)" icon="fas fa-chart-line"
-            color="success"/>
-        </div>
-
-        <div class="col-md-3 mb-3">
-          <stats-card title="Total Purchases" :value="formatCurrency(stats.totalPurchases)" icon="fas fa-shopping-cart"
-            color="warning"/>
-        </div>
-
-        <div class="col-md-3 mb-3">
-          <stats-card title="Low Stock Items" :value="stats.lowStockItems" icon="fas fa-exclamation-triangle"
-            color="danger"/>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="dashboard-title">Hi, here's what's happening <br> in your stores</h2>
+      <div class="d-flex gap-2 filter-tabs">
+        <div class="btn-group bg-white rounded-pill p-1 shadow-sm">
+          <button @click="updateChartDays(1)" :class="{ 'active': activeDays === 1 }"
+            class="btn btn-sm rounded-pill">Today</button>
+          <button @click="updateChartDays(7)" :class="{ 'active': activeDays === 7 }" class="btn btn-sm rounded-pill">This
+            Week</button>
+          <button @click="updateChartDays(30)" :class="{ 'active': activeDays === 30 }"
+            class="btn btn-sm rounded-pill">This Month</button>
         </div>
       </div>
+    </div>
 
-      <!-- Recent Activity Row -->
-      <div class="row">
-        <div class="col-md-8 mb-4">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-              <h5 class="mb-0 font-weight-bold">Recent Sales</h5>
+    <div class="bento-grid">
+      <div class="bento-item main-stats-card p-4 mb-4">
+        <div class="row align-items-center">
+          <div class="col-md-4">
+            <p class="text-muted mb-1">
+              In the last {{ activeDays === 1 ? '24 hours' : activeDays + ' days' }} your stores sold
+            </p>
+            <h1 class="display-5 font-weight-bold">{{ formatCurrency(stats.totalSales) }}</h1>
+            <p class="text-success small">Revenue performance active</p>
+          </div>
+          <div class="col-md-5">
+            <apexchart type="area" height="160" :options="sparklineOptions" :series="chartSeries">
+            </apexchart>
+          </div>
+          <div class="col-md-3 border-start">
+            <div class="mb-4">
+              <p class="text-muted small mb-0">Low Stock Alerts</p>
+              <h3>{{ stats.lowStockItems }}</h3>
             </div>
-            <div class="card-body">
-              <div v-if="loading" class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                  <span class="sr-only visually-hidden">Loading...</span>
-                </div>
-              </div>
-              <div v-else-if="recentSales.length === 0" class="text-center py-5 text-muted">
-                <i class="fas fa-inbox fa-3x mb-3"></i>
-                <p>No recent sales</p>
-              </div>
-              <div v-else class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Customer</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="sale in recentSales" :key="sale.id">
-                      <td>#{{ sale.id }}</td>
-                      <td>{{ sale.customer ? sale.customer.name : 'N/A' }}</td>
-                      <td>{{ formatDate(sale.sale_date) }}</td>
-                      <td class="font-weight-bold">{{ formatCurrency(sale.total_amount) }}</td>
-                      <td class="sale-status">
-                        <span class="badge badge-success">{{ sale.status }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div>
+              <p class="text-muted small mb-0">Total Products</p>
+              <h3>{{ stats.totalProducts }}</h3>
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="col-md-4 mb-4">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0">
-              <h5 class="mb-0 font-weight-bold">Low Stock Alert</h5>
+      <div class="row g-4">
+        <div class="col-md-7">
+          <div class="bento-item p-4 h-100">
+            <div class="d-flex justify-content-between align-items-start mb-4">
+              <h5 class="font-weight-bold">Daily Sales Volume</h5>
             </div>
-            <div class="card-body">
-              <div v-if="loadingStock" class="text-center py-5">
-                <div class="spinner-border text-danger" role="status">
-                  <span class="sr-only visually-hidden">Loading...</span>
-                </div>
-              </div>
-              <div v-else-if="lowStockProducts.length === 0" class="text-center py-5 text-muted">
-                <i class="fas fa-check-circle fa-3x mb-3"></i>
-                <p>All products well stocked!</p>
-              </div>
-              <ul v-else class="list-group list-group-flush">
-                <li v-for="product in lowStockProducts" :key="product.id"
-                  class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <div class="font-weight-bold">{{ product.name }}</div>
-                    <small class="text-muted">SKU: {{ product.sku }}</small>
-                  </div>
-                  <span class="badge badge-danger badge-pill">{{ product.current_stock }}</span>
-                </li>
-              </ul>
-            </div>
+            <apexchart type="bar" height="250" :options="barChartOptions" :series="chartSeries">
+            </apexchart>
+          </div>
+        </div>
+
+        <div class="col-md-5 d-flex flex-column gap-4">
+          <div class="bento-item p-4 flex-fill alert-card">
+            <h5 class="font-weight-bold">Inventory Status</h5>
+            <p class="text-muted small">You have {{ stats.lowStockItems }} items below threshold.</p>
+            <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3">View Report</router-link>
+          </div>
+
+          <div class="bento-item p-4 flex-fill info-card">
+            <h5 class="font-weight-bold">Purchase Summary</h5>
+            <p class="text-muted small">Total Cost: {{ formatCurrency(stats.totalPurchases) }}</p>
           </div>
         </div>
       </div>
@@ -105,120 +71,132 @@
 
 <script>
 import MainLayout from '../Layouts/MainLayout.vue';
-import StatsCard from '../Components/StatsCard.vue';
-import api from '@/services/api.js';
-import authApi from '@/services/authApi.js';
+import VueApexCharts from 'vue-apexcharts';
 
 export default {
   name: 'Dashboard',
   components: {
     MainLayout,
-    StatsCard
+    apexchart: VueApexCharts, // Register the component
   },
   data() {
     return {
-      loading: false,
-      loadingStock: false,
-      stats: {
-        totalProducts: 0,
-        totalSales: 0,
-        totalPurchases: 0,
-        lowStockItems: 0
+      activeDays: 30,
+      stats: { totalProducts: 0, totalSales: 0, totalPurchases: 0, lowStockItems: 0 },
+      chartSeries: [{ name: 'Sales', data: [] }],
+
+      // Sparkline (Top Area Chart) Options
+      sparklineOptions: {
+        chart: { sparkline: { enabled: true }, animations: { enabled: true } },
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05 } },
+        colors: ['#1a1a1a'],
+        tooltip: { x: { show: false }, y: { title: { formatter: (val) => 'Total PKR' } } }
       },
-      recentSales: [],
-      lowStockProducts: []
+
+      // Bar Chart Options
+      barChartOptions: {
+        chart: { toolbar: { show: false } },
+        colors: ['#1a1a1a'],
+        plotOptions: { bar: { borderRadius: 6, columnWidth: '35%' } },
+        xaxis: { categories: [], axisBorder: { show: false } },
+        dataLabels: { enabled: false },
+        grid: { show: false }
+      }
     };
   },
   mounted() {
     this.fetchDashboardData();
+    this.fetchChartData(30);
   },
   methods: {
-    async fetchDashboardData() {
-      this.loading = true;
-      this.loadingStock = true;
+    async updateChartDays(days) {
+      this.activeDays = days;
+      await this.fetchChartData(days);
+    },
 
+    async fetchChartData(days) {
       try {
-        // Fetch stats
-        await authApi.get('/sanctum/csrf-cookie');
-        const [productsRes, salesRes, lowStockRes] = await Promise.all([
-          this.$axios.get('/products'),
-          this.$axios.get('/sales'),
-          this.$axios.get('/reports/low-stock?threshold=10')
-        ]);
+        const res = await this.$axios.get(`/reports/sales-chart?days=${days}`);
+        const labels = res.data.map(item => item.date);
+        const values = res.data.map(item => parseFloat(item.total));
 
-        this.stats.totalProducts = productsRes.data.total || 0;
-        this.recentSales = salesRes.data.data.slice(0, 5) || [];
+        this.chartSeries = [{ name: 'Revenue', data: values }];
 
-        // Calculate total sales
-        this.stats.totalSales = salesRes.data.data.reduce((sum, sale) => {
-          return sum + parseFloat(sale.total_amount);
-        }, 0);
-
-        this.lowStockProducts = lowStockRes.data.slice(0, 5) || [];
-        this.stats.lowStockItems = lowStockRes.data.length || 0;
-
-        // Fetch purchases for stats
-        const purchasesRes = await this.$axios.get('/purchases');
-        this.stats.totalPurchases = purchasesRes.data.data.reduce((sum, purchase) => {
-          return sum + parseFloat(purchase.total_amount);
-        }, 0);
-
+        // Update bar chart categories
+        this.barChartOptions = {
+          ...this.barChartOptions,
+          xaxis: { categories: labels }
+        };
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        this.loading = false;
-        this.loadingStock = false;
+        console.error("Error fetching chart:", error);
+      }
+    },
+
+    // async fetchDashboardData() {
+    //   try {
+    //     const [productsRes, salesRes, lowStockRes, purchasesRes] = await Promise.all([
+    //       this.$axios.get('/products'),
+    //       this.$axios.get('/sales'),
+    //       this.$axios.get('/reports/low-stock?threshold=10'),
+    //       this.$axios.get('/purchases')
+    //     ]);
+
+    //     this.stats.totalProducts = productsRes.data.total || 0;
+    //     this.stats.lowStockItems = lowStockRes.data.length || 0;
+    //     this.stats.totalSales = salesRes.data.data.reduce((sum, sale) => sum + parseFloat(sale.total_amount), 0);
+    //     this.stats.totalPurchases = purchasesRes.data.data.reduce((sum, p) => sum + parseFloat(p.total_amount), 0);
+    //   } catch (error) {
+    //     console.error('Error fetching stats:', error);
+    //   }
+    // },
+
+    async updateChartDays(days) {
+      this.activeDays = days;
+      // Fetch both simultaneously
+      await Promise.all([
+        this.fetchChartData(days),
+        this.fetchDashboardData(days)
+      ]);
+    },
+
+    async fetchDashboardData(days = 30) {
+      try {
+        // We hit the new summary endpoint with the 'days' filter
+        const res = await this.$axios.get(`/reports/dashboard-summary?days=${days}`);
+
+        // Update the stats object
+        this.stats = {
+          totalProducts: res.data.totalProducts,
+          totalSales: res.data.totalSales,
+          totalPurchases: res.data.totalPurchases,
+          lowStockItems: res.data.lowStockItems,
+          profit: res.data.profit // You can now display this too!
+        };
+      } catch (error) {
+        console.error('Error fetching stats:', error);
       }
     },
     formatCurrency(amount) {
-      return new Intl.NumberFormat('en-PK', {
-        style: 'currency',
-        currency: 'PKR'
-      }).format(amount);
-    },
-    formatDate(date) {
-      return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
+      return new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR' }).format(amount);
     }
   }
 };
 </script>
 
 <style scoped>
-.dashboard {
-  animation: fadeIn 0.5s;
+/* Inherit your existing styles */
+.active {
+  background-color: #1a1a1a !important;
+  color: white !important;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.alert-card {
+  background: #fffcf0;
+  border: 1px solid #ffeeba;
 }
 
-.card {
-  border-radius: 12px;
-}
-
-.table {
-  margin-bottom: 0;
-}
-
-.badge {
-  padding: 6px 12px;
-  border-radius: 6px;
-}
-
-.sale-status .badge {
-  color:black;
-  font-weight: 500;
+.info-card {
+  background: #f0f7ff;
 }
 </style>

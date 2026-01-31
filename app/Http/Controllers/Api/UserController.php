@@ -36,6 +36,22 @@ class UserController extends Controller
     }
 
     // UPDATE USER
+    // public function update(Request $request, $id)
+    // {
+    //     $user = User::findOrFail($id);
+
+    //     $data = $request->validate([
+    //         'name' => 'required|string',
+    //         'role' => 'required|in:admin,staff',
+    //     ]);
+
+    //     $user->update($data);
+
+    //     return response()->json([
+    //         'message' => 'User updated',
+    //         'user' => $user
+    //     ]);
+    // }
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
@@ -43,14 +59,18 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'role' => 'required|in:admin,staff',
+            'password' => 'nullable|min:6', // Add this
         ]);
+
+        if (!empty($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']); // Don't overwrite with null if empty
+        }
 
         $user->update($data);
 
-        return response()->json([
-            'message' => 'User updated',
-            'user' => $user
-        ]);
+        return response()->json(['message' => 'User updated', 'user' => $user]);
     }
 
     // DELETE USER

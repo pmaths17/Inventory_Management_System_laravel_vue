@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('sku')->unique();
+            $table->string('sku',20)->unique();
             $table->decimal('purchase_price',10,2);
             $table->decimal('sale_price',10,2);
+            $table->integer('locked_stock')->default(0);
             $table->timestamps();
         });
     }

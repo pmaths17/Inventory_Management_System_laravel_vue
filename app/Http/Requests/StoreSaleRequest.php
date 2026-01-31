@@ -42,7 +42,8 @@ class StoreSaleRequest extends FormRequest
                         "Price for product ID {$product->id} must be {$product->sale_price}"
                     );
                 }
-                if ($item['quantity'] > $product->current_stock) {
+                // if ($item['quantity'] > $product->current_stock) {
+                if ($item['quantity'] > $product->available_stock) {
                     $validator->errors()->add(
                         'items',
                         "Insufficient stock for product ID {$product->id}. Available: {$product->current_stock}"

@@ -19,16 +19,8 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 // AUTH ROUTES (public)
 Route::post('/login', [AuthController::class, 'login']);
-// Route::post('/logout', [AuthController::class, 'logout']);
-//Route::post('/register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
-
-
-Route::middleware(['auth:sanctum', 'admin'])->group(function () {
-    Route::apiResource('users', UserController::class);
-});
-
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -41,6 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sales', [SaleController::class, 'store']);
     Route::get('/sales', [SaleController::class, 'index']);
     Route::get('/sales/{id}', [SaleController::class, 'show']);
+    Route::put('/sales/{id}', [SaleController::class, 'update']);   // full update
+    Route::patch('/sales/{id}', [SaleController::class, 'update']); // partial update
+
 
     // Products
     Route::post('/products', [ProductController::class, 'store']);
@@ -54,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers/{id}', [CustomerController::class, 'show']);
     Route::put('/customers/{id}', [CustomerController::class, 'update']);
     Route::post('/customers', [CustomerController::class, 'store']);
+    // routes/api.php
+    Route::delete('/customers/{id}', [CustomerController::class, 'destroy']);
 
     // Suppliers
     Route::get('/suppliers', [SupplierController::class, 'index']);
@@ -65,18 +62,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stock-movements', [StockMovementController::class, 'index']);
     Route::get('/stock-movements/{id}', [StockMovementController::class, 'show']);
 
-    // Reports
-    Route::get('/reports/stock-summary', [ReportsController::class, 'stockSummary']);
-    Route::get('/reports/stock-ledger', [ReportsController::class, 'stockLedger']);
-    Route::get('/reports/low-stock', [ReportsController::class, 'lowStock']);
-    Route::get('/reports/purchases', [ReportsController::class, 'purchaseList']);
-    Route::get('/reports/purchases/{id}', [ReportsController::class, 'purchaseDetails']);
-    Route::get('/reports/supplier-wise-purchases', [ReportsController::class, 'supplierWisePurchases']);
-    Route::get('/reports/sales', [ReportsController::class, 'salesList']);
-    Route::get('/reports/sales/{id}', [ReportsController::class, 'salesdetails']);
-    Route::get('/reports/customer-wise-sales', [ReportsController::class, 'customerWiseSales']);
-    Route::get('/reports/product-wise-sales', [ReportsController::class, 'productWiseSales']);
-    Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
-    Route::get('/reports/purchase-cost', [ReportsController::class, 'purchaseCost']);
-    Route::get('/reports/profit', [ReportsController::class, 'profit']);
+    Route::middleware(['admin'])->group(function () {
+        // Reports
+        Route::get('/reports/stock-summary', [ReportsController::class, 'stockSummary']);
+        Route::get('/reports/stock-ledger', [ReportsController::class, 'stockLedger']);
+        Route::get('/reports/low-stock', [ReportsController::class, 'lowStock']);
+        Route::get('/reports/purchases', [ReportsController::class, 'purchaseList']);
+        Route::get('/reports/purchases/{id}', [ReportsController::class, 'purchaseDetails']);
+        Route::get('/reports/supplier-wise-purchases', [ReportsController::class, 'supplierWisePurchases']);
+        Route::get('/reports/sales', [ReportsController::class, 'salesList']);
+        Route::get('/reports/sales/{id}', [ReportsController::class, 'salesdetails']);
+        Route::get('/reports/customer-wise-sales', [ReportsController::class, 'customerWiseSales']);
+        Route::get('/reports/product-wise-sales', [ReportsController::class, 'productWiseSales']);
+        Route::get('/reports/revenue', [ReportsController::class, 'revenue']);
+        Route::get('/reports/purchase-cost', [ReportsController::class, 'purchaseCost']);
+        Route::get('/reports/profit', [ReportsController::class, 'profit']);
+        Route::get('/reports/sales-chart', [ReportsController::class, 'salesChartData']);
+        Route::get('/reports/dashboard-summary', [ReportsController::class, 'dashboardSummary']);
+        Route::apiResource('users', UserController::class);
+    });
 });
