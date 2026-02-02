@@ -84,9 +84,14 @@
     Your account currently has limited access.
   </p>
 </div>
-<p class="text-danger small">
+<!-- <p class="text-danger small">
    Name: {{ user.name }} | Role: {{ user.role }}
-</p>
+</p> -->
+<div class="user-info d-flex gap-2 align-items-center mt-4 p-2 bg-light rounded-pill shadow-sm justify-content-center">
+  <i class="fas fa-user-circle text-dark" style="font-size: 1.2rem;"></i>
+  <span class="fw-bold">{{ user.name }}</span>
+  <span class="badge" :class="user.role === 'admin' ? 'bg-success' : 'bg-secondary'">{{ user.role }}</span>
+</div>
   </main-layout>
 </template>
 
