@@ -24,7 +24,17 @@ class StorePurchaseRequest extends FormRequest
     {
         return [
             'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_date' => 'required|date',
+            // 'purchase_date' => 'required|date',
+            'purchase_date' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) {
+                    // Only allow today's date
+                    if ($value !== now()->toDateString()) {
+                        $fail('Purchases can only be created for today.');
+                    }
+                }
+            ],
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',

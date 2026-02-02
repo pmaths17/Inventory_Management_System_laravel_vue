@@ -187,4 +187,119 @@ class ReportsController extends Controller
         'profit' => (float)($totalSales - $totalPurchases)
     ]);
 }
+// Add this method for detailed profit report
+public function profitReport(Request $request)
+{
+    $fromDate = $request->from_date;
+    $toDate = $request->to_date;
+
+    // Get all completed sales with items
+    $salesData = Sale::with('items.product')
+        ->where('status', 'completed')
+        ->whereBetween('sale_date', [$fromDate, $toDate])
+        ->get();
+
+    $reportData = [];
+    $totalRevenue = 0;
+    $totalCost = 0;
+    $totalProfit = 0;
+
+    foreach ($salesData as $sale) {
+        foreach ($sale->items as $item) {
+            $product = $item->product;
+            
+            // Calculate cost using FIFO logic
+            $costPerUnit = $this->calculateFIFOCost($product->id, $item->quantity, $sale->sale_date);
+            $totalCostForItem = $costPerUnit * $item->quantity;
+            $revenueForItem = $item->subtotal;
+            $profitForItem = $revenueForItem - $totalCostForItem;
+
+            $reportData[] = [
+                'sale_id' => $sale->id,
+                'sale_date' => $sale->sale_date,
+                'product_name' => $product->name,
+                'quantity' => $item->quantity,
+                'revenue' => $revenueForItem,
+                'cost' => $totalCostForItem,
+                'profit' => $profitForItem,
+            ];
+
+            $totalRevenue += $revenueForItem;
+            $totalCost += $totalCostForItem;
+            $totalProfit += $profitForItem;
+        }
+    }
+
+    return response()->json([
+        'data' => $reportData,
+        'summary' => [
+            'total_revenue' => round($totalRevenue, 2),
+            'total_cost' => round($totalCost, 2),
+            'total_profit' => round($totalProfit, 2),
+            'profit_margin' => $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 2) : 0
+        ]
+    ]);
+}
+
+// Helper method to calculate FIFO cost
+private function calculateFIFOCost($productId, $quantity, $saleDate)
+{
+    $batches = DB::table('purchase_items')
+        ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+        ->where('purchase_items.product_id', $productId)
+        ->where('purchases.purchase_date', '<=', $saleDate)
+        ->where('purchase_items.quantity_remaining', '>', 0)
+        ->orderBy('purchases.purchase_date', 'asc')
+        ->select('purchase_items.price', 'purchase_items.quantity_remaining')
+        ->get();
+
+    if ($batches->isEmpty()) {
+        // Fallback: use latest purchase price
+        $latestPrice = DB::table('purchase_items')
+            ->where('product_id', $productId)
+            ->orderBy('id', 'desc')
+            ->value('price');
+        return $latestPrice ?? 0;
+    }
+
+    $totalCost = 0;
+    $remaining = $quantity;
+
+    foreach ($batches as $batch) {
+        if ($remaining <= 0) break;
+        
+        $deduct = min($remaining, $batch->quantity_remaining);
+        $totalCost += $deduct * $batch->price;
+        $remaining -= $deduct;
+    }
+
+    return $quantity > 0 ? ($totalCost / $quantity) : 0;
+}
+
+// Add this method for revenue breakdown
+public function revenueBreakdown(Request $request)
+{
+    $fromDate = $request->from_date;
+    $toDate = $request->to_date;
+
+    $revenueData = Sale::select(
+        DB::raw('DATE(sale_date) as date'),
+        DB::raw('SUM(total_amount) as daily_revenue'),
+        DB::raw('COUNT(*) as total_sales')
+    )
+    ->where('status', 'completed')
+    ->whereBetween('sale_date', [$fromDate, $toDate])
+    ->groupBy('date')
+    ->orderBy('date', 'asc')
+    ->get();
+
+    $totalRevenue = Sale::where('status', 'completed')
+        ->whereBetween('sale_date', [$fromDate, $toDate])
+        ->sum('total_amount');
+
+    return response()->json([
+        'daily_breakdown' => $revenueData,
+        'total_revenue' => round($totalRevenue, 2)
+    ]);
+}
 }

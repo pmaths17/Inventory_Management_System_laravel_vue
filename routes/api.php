@@ -80,5 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/sales-chart', [ReportsController::class, 'salesChartData']);
         Route::get('/reports/dashboard-summary', [ReportsController::class, 'dashboardSummary']);
         Route::apiResource('users', UserController::class);
+        Route::get('/reports/profit-report', [ReportsController::class, 'profitReport']);
+        Route::get('/reports/revenue-breakdown', [ReportsController::class, 'revenueBreakdown']);
     });
 });

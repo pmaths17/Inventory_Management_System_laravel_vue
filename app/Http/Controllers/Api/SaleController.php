@@ -41,27 +41,28 @@ class SaleController extends Controller
                 foreach ($items as $item) {
                     // LOCK ROW (important)
                     $product = Product::lockForUpdate()->findOrFail($item['product_id']);
-                    \Log::info("Checking stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
+                    // \Log::info("Checking stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
                     // stock check
                     if ($item['quantity'] > $product->available_stock) {
-                        \Log::error("Insufficient stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
+                        // \Log::error("Insufficient stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
                         throw new \Exception("Insufficient stock for {$product->name}");
-                    }
-                    $subtotal = $item['quantity'] * $item['price'];
-                    $totalAmount += $subtotal;
-                    // sale item
-                    SaleItem::create([
-                        'sale_id'   => $sale->id,
-                        'product_id' => $product->id,
-                        'quantity'  => $item['quantity'],
-                        'price'     => $item['price'],
-                        'subtotal'  => $subtotal,
-                    ]);
+                        }
+                        $subtotal = $item['quantity'] * $item['price'];
+                        $totalAmount += $subtotal;
+                        // sale item
+                        SaleItem::create([
+                            'sale_id'   => $sale->id,
+                            'product_id' => $product->id,
+                            'quantity'  => $item['quantity'],
+                            'price'     => $item['price'],
+                            'subtotal'  => $subtotal,
+                            ]);
+                            \Log::info("SALE item created");
                     if ($action === 'draft') {
                         // reserve stock only
                         $product->lockStock($item['quantity']);
                     }
-                    \Log::info("Deducting stock FIFO for product {$product->id}, quantity: {$item['quantity']}");
+                    // \Log::info("Deducting stock FIFO for product {$product->id}, quantity: {$item['quantity']}");
                     if ($action === 'completed') {
                         $this->deductStockFIFO($product, $item['quantity'], $sale->id);
                     }
@@ -113,15 +114,15 @@ class SaleController extends Controller
     }
     public function update(Request $request, string $id)
     {
-        \Log::info('Update hit', [
-            'id' => $id,
-            'request' => $request->all()
-        ]);
+        // \Log::info('Update hit', [
+        //     'id' => $id,
+        //     'request' => $request->all()
+        // ]);
         try {
             return DB::transaction(function () use ($request, $id) {
                 // Lock the sale row to prevent concurrent updates
                 $sale = Sale::with('items')->lockForUpdate()->findOrFail($id);
-                \Log::info('Sale fetched', ['sale' => $sale->toArray()]);
+                // \Log::info('Sale fetched', ['sale' => $sale->toArray()]);
                 // Only draft sales can be updated
                 if ($sale->status !== 'draft') {
                     return response()->json(['error' => 'Only draft sales can be updated'], 403);
@@ -131,7 +132,7 @@ class SaleController extends Controller
                 if (empty($items)) {
                     return response()->json(['error' => 'Sale must have at least one item'], 422);
                 }
-                \Log::info('Items data', ['items' => $request->items]);
+                // \Log::info('Items data', ['items' => $request->items]);
                 // Unlock stock from old items first (reverse previous draft reservations)
                 foreach ($sale->items as $oldItem) {
                     $product = Product::lockForUpdate()->findOrFail($oldItem->product_id);
@@ -150,7 +151,7 @@ class SaleController extends Controller
                     }
                     $subtotal = $item['quantity'] * $item['price'];
                     $totalAmount += $subtotal;
-                    \Log::info('Ready to update sale');
+                    // \Log::info('Ready to update sale');
                     // Create sale item
                     SaleItem::create([
                         'sale_id'    => $sale->id,
@@ -159,17 +160,17 @@ class SaleController extends Controller
                         'price'      => $item['price'],
                         'subtotal'   => $subtotal,
                     ]);
-                    \Log::info('sale created');
+                    // \Log::info('sale created');
 
                     if ($action === 'draft') {
                         // Reserve stock for draft
                         $product->lockStock($item['quantity']);
                     }
-                    \Log::info('Stock Locked');
+                    // \Log::info('Stock Locked');
                     if ($action === 'completed') {
                         $this->deductStockFIFO($product, $item['quantity'], $sale->id);
                     }
-                    \Log::info('Deducted fifo stock');
+                    // \Log::info('Deducted fifo stock');
                 }
                 // Update sale info
                 $sale->update([
@@ -178,8 +179,8 @@ class SaleController extends Controller
                     'total_amount' => $totalAmount,
                     'status'      => $action === 'completed' ? 'completed' : 'draft',
                 ]);
-                \Log::info('Products array', ['products' => $products ?? null]);
-                \Log::info('Draft items', ['items' => $items]);
+                // \Log::info('Products array', ['products' => $products ?? null]);
+                // \Log::info('Draft items', ['items' => $items]);
 
 
                 return response()->json([
@@ -193,17 +194,17 @@ class SaleController extends Controller
     }
     protected function deductStockFIFO(Product $product, int $quantity, int $saleId)
     {
-        \Log::info("Starting deductStockFIFO for product {$product->id}, quantity: {$quantity}");
+        // \Log::info("Starting deductStockFIFO for product {$product->id}, quantity: {$quantity}");
         $remaining = $quantity;
         foreach ($product->fifoBatches()->lockForUpdate()->get() as $batch) {
             if ($batch->quantity_remaining <= 0) continue; // skip empty batch
-            \Log::info("FIFO Batch {$batch->id} - remaining: {$batch->quantity_remaining}, remaining needed: {$remaining}");
+            // \Log::info("FIFO Batch {$batch->id} - remaining: {$batch->quantity_remaining}, remaining needed: {$remaining}");
             if ($remaining <= 0) break;
             $deduct = min($remaining, $batch->quantity_remaining);
-            \log::info("Deducted");
+            // \log::info("Deducted");
             $batch->quantity_remaining -= $deduct;
             $batch->save();
-            \log::info("Saved");
+            \Log::info("Saved");
             StockMovement::create([
                 'product_id'     => $product->id,
                 'quantity'       => $deduct,
