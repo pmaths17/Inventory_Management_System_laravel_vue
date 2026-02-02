@@ -35,23 +35,6 @@ class UserController extends Controller
         ]);
     }
 
-    // UPDATE USER
-    // public function update(Request $request, $id)
-    // {
-    //     $user = User::findOrFail($id);
-
-    //     $data = $request->validate([
-    //         'name' => 'required|string',
-    //         'role' => 'required|in:admin,staff',
-    //     ]);
-
-    //     $user->update($data);
-
-    //     return response()->json([
-    //         'message' => 'User updated',
-    //         'user' => $user
-    //     ]);
-    // }
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);

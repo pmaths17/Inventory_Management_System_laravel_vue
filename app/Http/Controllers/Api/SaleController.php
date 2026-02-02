@@ -28,7 +28,7 @@ class SaleController extends Controller
     {
         try {
             return DB::transaction(function () use ($request) {
-                $action = $request->input('action', 'draft'); // default = draft
+                $action = $request->input('action', 'draft'); 
                 $items  = $request->items;
                 $sale = Sale::create([
                     'customer_id' => $request->customer_id,
@@ -41,10 +41,8 @@ class SaleController extends Controller
                 foreach ($items as $item) {
                     // LOCK ROW (important)
                     $product = Product::lockForUpdate()->findOrFail($item['product_id']);
-                    // \Log::info("Checking stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
                     // stock check
                     if ($item['quantity'] > $product->available_stock) {
-                        // \Log::error("Insufficient stock for product {$product->id} - requested: {$item['quantity']}, available: {$product->available_stock}");
                         throw new \Exception("Insufficient stock for {$product->name}");
                         }
                         $subtotal = $item['quantity'] * $item['price'];
@@ -59,10 +57,8 @@ class SaleController extends Controller
                             ]);
                             \Log::info("SALE item created");
                     if ($action === 'draft') {
-                        // reserve stock only
                         $product->lockStock($item['quantity']);
                     }
-                    // \Log::info("Deducting stock FIFO for product {$product->id}, quantity: {$item['quantity']}");
                     if ($action === 'completed') {
                         $this->deductStockFIFO($product, $item['quantity'], $sale->id);
                     }
@@ -70,7 +66,6 @@ class SaleController extends Controller
                 $sale->update(['total_amount' => $totalAmount]);
                 return response()->json([
                     'message' => 'Sale saved successfully',
-                    // 'sale'    => $sale->load('items'),
                     'sale'    => $sale->load(['items.product', 'customer']),
                 ]);
             });
@@ -80,7 +75,6 @@ class SaleController extends Controller
     }
     public function show($id)
     {
-        // $sale = Sale::with('items.product')->findOrFail($id);
         $sale = Sale::with(['customer', 'items.product'])->findOrFail($id);
         foreach ($sale->items as $item) {
             $product = $item->product;

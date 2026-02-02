@@ -480,38 +480,6 @@ export default {
     this.fetchCustomers();
   },
   methods: {
-    // async editDraftSale(sale) {
-    //   try {
-    //     this.isEditingDraft = true;
-    //     this.editingSaleId = sale.id;
-
-    //     // fetch full sale with items
-    //     const response = await api.get(`/sales/${sale.id}`);
-    //     const draft = response.data;
-
-    //     // map backend sale → form
-    //     this.form = {
-    //       customer_id: draft.customer_id,
-    //       sale_date: draft.sale_date,
-    //       items: draft.items.map(item => ({
-    //         product_name: item.product?.name ?? '',
-    //         product_id: item.product_id,
-    //         quantity: item.quantity,
-    //         price: item.price,
-    //         subtotal: item.quantity * item.price,
-    //         // available_stock: item.product?.current_stock ?? null
-    //         available_stock: item.available_stock ?? 0
-    //       }))
-    //     };
-
-    //     // open SAME modal as New Sale
-    //     new Modal(document.getElementById('saleModal')).show();
-
-    //   } catch (error) {
-    //     console.error('Failed to load draft sale', error);
-    //     alert('Failed to open draft sale');
-    //   }
-    // },
     async editDraftSale(sale) {
       try {
         this.isEditingDraft = true;
@@ -527,7 +495,7 @@ export default {
           sale_date: draft.sale_date,
           items: draft.items.map(item => ({
             product_id: item.product_id,
-            product_name: item.product?.name ?? '', // <- product name included here
+            product_name: item.product?.name ?? '', 
             quantity: item.quantity,
             price: item.price,
             subtotal: item.quantity * item.price,
@@ -695,10 +663,6 @@ export default {
       return this.form.items.reduce((total, item) => total + (item.subtotal || 0), 0);
     },
     async saveSale(saveType) {
-      // if (this.hasInsufficientStock) {
-      //   alert('Some items exceed available stock. Please adjust quantities.');
-      //   return;
-      // }
       if (saveType !== 'draft' && this.hasInsufficientStock) {
         alert('Some items exceed available stock. Please adjust quantities.');
         return;
@@ -712,8 +676,6 @@ export default {
         const saleData = {
           customer_id: this.form.customer_id,
           sale_date: this.form.sale_date,
-          // status: saveType === 'draft' ? 'pending' : 'completed',
-          // status: saveType === 'draft' ? 'draft' : 'completed',
           action: saveType,
           items: this.form.items.map(item => ({
             product_id: item.product_id,
@@ -744,44 +706,6 @@ export default {
       }
     },
 
-
-    // async saveSale() {
-    //   if (this.hasInsufficientStock) {
-    //     alert('Some items exceed available stock. Please adjust quantities.');
-    //     return;
-    //   }
-
-    //   this.saving = true;
-    //   try {
-    //     const saleData = {
-    //       customer_id: this.form.customer_id,
-    //       sale_date: this.form.sale_date,
-    //       items: this.form.items.map(item => ({
-    //         product_id: item.product_id,
-    //         quantity: item.quantity,
-    //         price: item.price
-    //       }))
-    //     };
-
-    //     await api.post('/sales', saleData);
-    //     alert('Sale completed successfully!');
-    //     this.closeModal();
-    //     this.fetchSales(this.pagination.current_page);
-    //   } catch (error) {
-    //     console.error('Error saving sale:', error);
-    //     const errorMsg = error.response?.data?.message || 'Failed to save sale. Please check all fields.';
-    //     alert(errorMsg);
-    //   } finally {
-    //     this.saving = false;
-    //   }
-    // },
-
-    // closeModal() {
-    //   const modalEl = document.getElementById('saleModal');
-    //   const modal = Modal.getInstance(modalEl);
-    //   if (modal) modal.hide();
-    //   this.resetForm();
-    // },
     closeModal() {
       const modalEl = document.getElementById('saleModal');
       const modal = Modal.getInstance(modalEl);
@@ -815,15 +739,6 @@ export default {
         ]
       };
     },
-
-    // getStatusClass(status) {
-    //   const statusClasses = {
-    //     completed: 'badge-success',
-    //     pending: 'badge-warning',
-    //     cancelled: 'badge-danger'
-    //   };
-    //   return statusClasses[status] || 'badge-secondary';
-    // },
 
     getStatusBadgeClass(status) {
       return {

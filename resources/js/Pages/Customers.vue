@@ -24,7 +24,6 @@
             <select class="form-select border-0 bg-light rounded-pill" v-model="sortBy" @change="applyFilters">
               <option value="id">Sort by ID</option>
               <option value="name">Sort by Name</option>
-              <option value="phone">Sort by Phone</option>
             </select>
           </div>
         </div>
@@ -56,7 +55,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="customer in customers" :key="customer.id" class="customer-row">
+              <tr v-for="customer in filteredCustomers" :key="customer.id" class="customer-row">
                 <td class="ps-4">
                   <div class="d-flex align-items-center">
                     <div class="customer-icon-mini me-3">
@@ -130,15 +129,18 @@
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.name" required />
+                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.name"
+                      required />
                   </div>
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Phone <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.phone" required />
+                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.phone"
+                      required />
                   </div>
                   <div class="col-md-12">
                     <label class="small text-muted mb-1">Address</label>
-                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.address" />
+                    <input type="text" class="form-control bg-light border-0 rounded-pill px-3"
+                      v-model="form.address" />
                   </div>
                 </div>
 
@@ -207,11 +209,13 @@ export default {
   components: { MainLayout },
   data() {
     return {
+      filteredCustomers: [],
       customers: [],
       loading: false,
       saving: false,
       searchQuery: '',
-      sortBy: 'name',
+      // sortBy: 'name',
+      sortBy: 'id',
       pagination: { current_page: 1, last_page: 1, from: 0, to: 0, total: 0 },
       form: { name: '', phone: '', address: '' },
       isEditing: false,
@@ -236,9 +240,11 @@ export default {
     async fetchCustomers(page = 1) {
       this.loading = true;
       try {
-        const params = { page, search: this.searchQuery };
+        // const params = { page, search: this.searchQuery };
+        const params = { page };
         const response = await api.get('/customers', { params });
-        this.customers = response.data.data;
+        // this.customers = response.data.data;
+        this.customers = response.data.data || response.data;
         this.pagination = {
           current_page: response.data.current_page,
           last_page: response.data.last_page,
@@ -256,15 +262,31 @@ export default {
 
     applyFilters() {
       let filtered = [...this.customers];
-      if (this.sortBy === 'phone') filtered.sort((a, b) => a.phone.localeCompare(b.phone));
-      else if (this.sortBy === 'id') filtered.sort((a, b) => a.id - b.id);
-      else filtered.sort((a, b) => a.name.localeCompare(b.name));
-      this.customers = filtered;
+      const q = this.searchQuery.toLowerCase();
+
+      if (q) {
+        filtered = filtered.filter(c =>
+          c.name.toLowerCase().includes(q) ||
+          (c.phone || '').includes(q)
+        );
+      }
+
+      if (this.sortBy === 'name') {
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (this.sortBy === 'id') {
+        filtered.sort((a, b) => a.id - b.id);
+      }
+
+      this.filteredCustomers = filtered;
     },
+
 
     debouncedSearch() {
       clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(() => this.fetchCustomers(1), 300);
+      // this.debounceTimer = setTimeout(() => this.fetchCustomers(1), 300);
+      this.debounceTimer = setTimeout(() => {
+        this.applyFilters();
+      }, 300);
     },
 
     changePage(page) {
@@ -291,7 +313,7 @@ export default {
 
     editFromView() {
       const modal = Modal.getInstance(document.getElementById('viewModal'));
-      if(modal) modal.hide();
+      if (modal) modal.hide();
       this.editCustomer(this.selectedCustomer);
     },
 
@@ -309,7 +331,7 @@ export default {
     deleteFromView() {
       const customerToDelete = this.selectedCustomer;
       const modal = Modal.getInstance(document.getElementById('viewModal'));
-      if(modal) modal.hide();
+      if (modal) modal.hide();
       this.confirmDelete(customerToDelete);
     },
 
@@ -329,13 +351,13 @@ export default {
 
     closeModal() {
       const modal = Modal.getInstance(document.getElementById('customerModal'));
-      if(modal) modal.hide();
+      if (modal) modal.hide();
       this.resetForm();
     },
 
     closeViewModal() {
       const modal = Modal.getInstance(document.getElementById('viewModal'));
-      if(modal) modal.hide();
+      if (modal) modal.hide();
       this.selectedCustomer = null;
     },
 
@@ -349,7 +371,9 @@ export default {
 
 <style scoped>
 /* Inherited from Inventory Aesthetic */
-.customers-page { animation: fadeIn 0.5s; }
+.customers-page {
+  animation: fadeIn 0.5s;
+}
 
 .bento-item {
   background: white;
@@ -364,7 +388,8 @@ export default {
   color: #1a1a1a;
 }
 
-.customer-icon, .customer-icon-mini {
+.customer-icon,
+.customer-icon-mini {
   background: #f8f9fa;
   color: #1a1a1a;
   display: flex;
@@ -373,7 +398,10 @@ export default {
   border-radius: 12px;
 }
 
-.customer-icon-mini { width: 35px; height: 35px; }
+.customer-icon-mini {
+  width: 35px;
+  height: 35px;
+}
 
 .sku-badge {
   background: #f0f0f0;
@@ -397,14 +425,26 @@ export default {
   margin-left: 4px;
 }
 
-.btn-icon.view:hover { background: #f0f7ff; color: #007bff; }
-.btn-icon.edit:hover { background: #fff3cd; color: #ffc107; }
-.btn-icon.delete:hover { background: #ffe5e5; color: #dc3545; }
+.btn-icon.view:hover {
+  background: #f0f7ff;
+  color: #007bff;
+}
+
+.btn-icon.edit:hover {
+  background: #fff3cd;
+  color: #ffc107;
+}
+
+.btn-icon.delete:hover {
+  background: #ffe5e5;
+  color: #dc3545;
+}
 
 .customer-row:hover {
   background-color: #f8f9fa;
   transform: translateX(5px);
 }
+
 /* Modern Pagination */
 .pagination .page-link {
   border: none;
@@ -429,5 +469,4 @@ export default {
   background-color: transparent;
   opacity: 0.4;
 }
-
 </style>

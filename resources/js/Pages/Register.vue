@@ -68,7 +68,7 @@
 </template>
 
 <script>
-import api from '@/services/api'; // use your existing api.js
+import api from '@/services/api';
 
 export default {
   name: 'Register',
@@ -125,7 +125,6 @@ export default {
 </script>
 
 <style scoped>
-/* Keep your existing styles exactly as provided */
 .auth-wrapper {
   min-height: 100vh;
   display: flex;

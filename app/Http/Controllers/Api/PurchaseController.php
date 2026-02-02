@@ -66,8 +66,6 @@ class PurchaseController extends Controller
                 ]);
             });
         }
-        // catch (\Exception $e) {
-        //     return $e->getMessage();
         catch (\Exception $e) {
             // Log the error to Laravel log
             \Log::error('Purchase save error: ' . $e->getMessage(), [

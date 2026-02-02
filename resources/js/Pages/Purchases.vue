@@ -91,20 +91,6 @@
                 <td class="text-center">
                   <span class="status-dot badge-success">{{ purchase.items_count || 0 }} items</span>
                 </td>
-                <!-- <td class="text-start">
-                  <div v-if="purchase.items && purchase.items.length">
-                    <ul class="mb-0 p-0" style="list-style: none;">
-                      <li v-for="item in purchase.items" :key="item.id">
-                        {{ item.product.name }} ({{ item.product.sku }}) - {{ item.quantity }}
-                      </li>
-                    </ul>
-                  </div>
-                  <div v-else>
-                    0 items
-                  </div>
-                </td> -->
-
-
                 <td class="pe-4 text-end">
                   <div class="action-buttons">
                     <button class="btn-icon view" @click="viewPurchase(purchase)" title="View Details">

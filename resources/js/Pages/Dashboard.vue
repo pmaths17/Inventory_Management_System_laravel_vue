@@ -6,7 +6,8 @@
         <div class="btn-group bg-white rounded-pill p-1 shadow-sm">
           <button @click="updateChartDays(1)" :class="{ 'active': activeDays === 1 }"
             class="btn btn-sm rounded-pill">Today</button>
-          <button @click="updateChartDays(7)" :class="{ 'active': activeDays === 7 }" class="btn btn-sm rounded-pill">This
+          <button @click="updateChartDays(7)" :class="{ 'active': activeDays === 7 }"
+            class="btn btn-sm rounded-pill">This
             Week</button>
           <button @click="updateChartDays(30)" :class="{ 'active': activeDays === 30 }"
             class="btn btn-sm rounded-pill">This Month</button>
@@ -56,7 +57,16 @@
           <div class="bento-item p-4 flex-fill alert-card">
             <h5 class="font-weight-bold">Inventory Status</h5>
             <p class="text-muted small">You have {{ stats.lowStockItems }} items below threshold.</p>
-            <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3">View Report</router-link>
+            <!-- <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3">View Report</router-link> -->
+            <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3" :class="{ disabled: !isAdmin }"
+              :aria-disabled="!isAdmin" @click.prevent="!isAdmin">
+              View Report
+            </router-link>
+
+            <p v-if="!isAdmin" class="text-muted small mt-2 mb-0">
+              Reports are available to administrators only.
+            </p>
+
           </div>
 
           <div class="bento-item p-4 flex-fill info-card">
@@ -66,6 +76,17 @@
         </div>
       </div>
     </div>
+    <div v-if="!isAdmin" class="bento-item p-4 text-center">
+  <i class="fas fa-lock fa-2x text-muted mb-3"></i>
+  <h5 class="fw-bold">Limited Access</h5>
+  <p class="text-muted mb-0">
+    This dashboard is available for administrators only.<br>
+    Your account currently has limited access.
+  </p>
+</div>
+<p class="text-danger small">
+   Name: {{ user.name }} | Role: {{ user.role }}
+</p>
   </main-layout>
 </template>
 
@@ -81,6 +102,7 @@ export default {
   },
   data() {
     return {
+      user: null,
       activeDays: 30,
       stats: { totalProducts: 0, totalSales: 0, totalPurchases: 0, lowStockItems: 0 },
       chartSeries: [{ name: 'Sales', data: [] }],
@@ -108,8 +130,23 @@ export default {
   mounted() {
     this.fetchDashboardData();
     this.fetchChartData(30);
+    this.fetchCurrentUser();
   },
+  computed: {
+    isAdmin() {
+    return this.user?.role === 'admin'; // <-- use fetched user
+  }
+  },
+
   methods: {
+    async fetchCurrentUser() {
+    try {
+      const res = await this.$axios.get('/user'); // <-- Laravel endpoint for current user
+      this.user = res.data;
+    } catch (err) {
+      console.error('Error fetching user:', err);
+    }
+  },
     async updateChartDays(days) {
       this.activeDays = days;
       await this.fetchChartData(days);
@@ -132,24 +169,6 @@ export default {
         console.error("Error fetching chart:", error);
       }
     },
-
-    // async fetchDashboardData() {
-    //   try {
-    //     const [productsRes, salesRes, lowStockRes, purchasesRes] = await Promise.all([
-    //       this.$axios.get('/products'),
-    //       this.$axios.get('/sales'),
-    //       this.$axios.get('/reports/low-stock?threshold=10'),
-    //       this.$axios.get('/purchases')
-    //     ]);
-
-    //     this.stats.totalProducts = productsRes.data.total || 0;
-    //     this.stats.lowStockItems = lowStockRes.data.length || 0;
-    //     this.stats.totalSales = salesRes.data.data.reduce((sum, sale) => sum + parseFloat(sale.total_amount), 0);
-    //     this.stats.totalPurchases = purchasesRes.data.data.reduce((sum, p) => sum + parseFloat(p.total_amount), 0);
-    //   } catch (error) {
-    //     console.error('Error fetching stats:', error);
-    //   }
-    // },
 
     async updateChartDays(days) {
       this.activeDays = days;
