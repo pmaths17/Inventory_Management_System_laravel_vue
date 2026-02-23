@@ -58,13 +58,13 @@
             <h5 class="font-weight-bold">Inventory Status</h5>
             <p class="text-muted small">You have {{ stats.lowStockItems }} items below threshold.</p>
             <!-- <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3">View Report</router-link> -->
-            <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3" :class="{ disabled: !isAdmin }"
-              :aria-disabled="!isAdmin" @click.prevent="!isAdmin">
+            <router-link to="/reports" class="btn btn-dark btn-sm rounded-pill px-3" :class="{ disabled: !canViewReports }"
+              :aria-disabled="!canViewReports" @click.prevent="!canViewReports">
               View Report
             </router-link>
 
-            <p v-if="!isAdmin" class="text-muted small mt-2 mb-0">
-              Reports are available to administrators only.
+            <p v-if="!canViewReports" class="text-muted small mt-2 mb-0">
+              Reports are available to accounts with reports access.
             </p>
 
           </div>
@@ -76,7 +76,7 @@
         </div>
       </div>
     </div>
-    <div v-if="!isAdmin" class="bento-item p-4 text-center">
+    <div v-if="!canViewReports" class="bento-item p-4 text-center">
   <i class="fas fa-lock fa-2x text-muted mb-3"></i>
   <h5 class="fw-bold">Limited Access</h5>
   <p class="text-muted mb-0">
@@ -87,10 +87,10 @@
 <!-- <p class="text-danger small">
    Name: {{ user.name }} | Role: {{ user.role }}
 </p> -->
-<div class="user-info d-flex gap-2 align-items-center mt-4 p-2 bg-light rounded-pill shadow-sm justify-content-center">
+<div v-if="user" class="user-info d-flex gap-2 align-items-center mt-4 p-2 bg-light rounded-pill shadow-sm justify-content-center">
   <i class="fas fa-user-circle text-dark" style="font-size: 1.2rem;"></i>
   <span class="fw-bold">{{ user.name }}</span>
-  <span class="badge" :class="user.role === 'admin' ? 'bg-success' : 'bg-secondary'">{{ user.role }}</span>
+  <span class="badge" :class="isAdmin ? 'bg-success' : 'bg-secondary'">{{ user.primary_role || user.role }}</span>
 </div>
   </main-layout>
 </template>
@@ -107,7 +107,7 @@ export default {
   },
   data() {
     return {
-      user: null,
+      user: 'Loading',
       activeDays: 30,
       stats: { totalProducts: 0, totalSales: 0, totalPurchases: 0, lowStockItems: 0 },
       chartSeries: [{ name: 'Sales', data: [] }],
@@ -132,15 +132,24 @@ export default {
       }
     };
   },
-  mounted() {
+  async mounted() {
+    await this.fetchCurrentUser();
     this.fetchDashboardData();
     this.fetchChartData(30);
-    this.fetchCurrentUser();
   },
   computed: {
     isAdmin() {
-    return this.user?.role === 'admin'; // <-- use fetched user
-  }
+      const roleSlugs = Array.isArray(this.user?.roles) ? this.user.roles.map(role => role.slug) : [];
+      return roleSlugs.includes('admin') || this.user?.role === 'admin' || this.user?.is_admin;
+    },
+    canViewReports() {
+      const permissionSlugs = Array.isArray(this.user?.roles)
+        ? this.user.roles.flatMap(role =>
+          Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
+        )
+        : [];
+      return this.isAdmin || permissionSlugs.includes('reports.view');
+    }
   },
 
   methods: {
@@ -158,6 +167,9 @@ export default {
     },
 
     async fetchChartData(days) {
+      if (!this.canViewReports) {
+        return;
+      }
       try {
         const res = await this.$axios.get(`/reports/sales-chart?days=${days}`);
         const labels = res.data.map(item => item.date);
@@ -185,6 +197,9 @@ export default {
     },
 
     async fetchDashboardData(days = 30) {
+      if (!this.canViewReports) {
+        return;
+      }
       try {
         // We hit the new summary endpoint with the 'days' filter
         const res = await this.$axios.get(`/reports/dashboard-summary?days=${days}`);

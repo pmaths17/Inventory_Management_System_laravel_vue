@@ -59,22 +59,40 @@ export default {
     };
   },
   computed: {
+    isAdmin() {
+      const roleSlugs = Array.isArray(this.user?.roles) ? this.user.roles.map(role => role.slug) : [];
+      return roleSlugs.includes('admin') || this.user?.role === 'admin' || this.user?.is_admin;
+    },
+    permissionSlugs() {
+      if (!Array.isArray(this.user?.roles)) {
+        return [];
+      }
+      return this.user.roles.flatMap(role =>
+        Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
+      );
+    },
     menu() {
+      const can = (permission) => this.isAdmin || this.permissionSlugs.includes(permission);
       const items = [
         { to: '/dashboard', label: 'Dashboard', icon: 'fas fa-chart-line' },
-        { to: '/products', label: 'Products', icon: 'fas fa-box' },
-        { to: '/purchases', label: 'Purchases', icon: 'fas fa-shopping-cart' },
-        { to: '/sales', label: 'Sales', icon: 'fas fa-cash-register' },
-        { to: '/customers', label: 'Customers', icon: 'fas fa-users' },
-        { to: '/suppliers', label: 'Suppliers', icon: 'fas fa-truck' },
+        { to: '/products', label: 'Products', icon: 'fas fa-box', permission: 'products.view' },
+        { to: '/purchases', label: 'Purchases', icon: 'fas fa-shopping-cart', permission: 'purchases.view' },
+        { to: '/sales', label: 'Sales', icon: 'fas fa-cash-register', permission: 'sales.view' },
+        { to: '/customers', label: 'Customers', icon: 'fas fa-users', permission: 'customers.view' },
+        { to: '/suppliers', label: 'Suppliers', icon: 'fas fa-truck', permission: 'suppliers.view' },
       ];
 
-      if (this.user.role === 'admin') {
+      if (can('reports.view')) {
         items.push({ to: '/reports', label: 'Reports', icon: 'fas fa-file-invoice-dollar' });
+      }
+      if (can('users.view')) {
         items.push({ to: '/users', label: 'Manage Staff', icon: 'fas fa-user-shield' });
       }
+      if (can('roles.view') && can('permissions.view')) {
+        items.push({ to: '/roles-permissions', label: 'Access Rules', icon: 'fas fa-key' });
+      }
 
-      return items;
+      return items.filter(item => !item.permission || can(item.permission));
     }
   },
   // EVERYTHING BELOW MUST BE INSIDE METHODS

@@ -32,19 +32,4 @@ class AuthController extends Controller
         $request->session()->regenerateToken();  // prevent CSRF attacks
         return response()->noContent(); // 204 OK
     }
-    public function register(Request $request)
-    {
-        // Validate input
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed', // expects password_confirmation
-            'role' => 'required|in:admin,staff',
-        ]);
-        $data['password'] = bcrypt($data['password']);
-        $user = \App\Models\User::create($data);
-        Auth::login($user);
-        $request->session()->regenerate();
-        return response()->noContent();
-    }
 }

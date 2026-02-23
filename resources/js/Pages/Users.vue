@@ -2,67 +2,57 @@
     <main-layout>
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="dashboard-title">System <br> Access Control</h2>
-            <button class="btn btn-dark rounded-pill px-4 shadow-sm" @click="openCreateModal">
+            <button v-if="canCreateUsers" class="btn btn-dark rounded-pill px-4 shadow-sm" @click="openCreateModal">
                 <i class="fas fa-user-plus me-2"></i> Add New User
             </button>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="bento-item p-4 bg-white h-100 shadow-sm">
-                    <div class="d-flex align-items-center mb-4">
-                        <div class="icon-box bg-dark text-white me-3">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <h5 class="m-0 font-weight-bold">Administrators</h5>
+        <div class="bento-item p-4 bg-white shadow-sm">
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="icon-box bg-dark text-white">
+                        <i class="fas fa-users-cog"></i>
                     </div>
-
-                    <div v-if="admins.length === 0" class="text-muted small py-3">No admins found.</div>
-
-                    <div v-for="user in admins" :key="user.id"
-                        class="user-card p-3 mb-3 border rounded-4 d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-circle me-3">{{ getInitials(user.name) }}</div>
-                            <div>
-                                <div class="fw-bold">{{ user.name }}</div>
-                                <div class="text-muted small">{{ user.email }}</div>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn-icon view" @click="viewUser(user)"><i class="fas fa-eye"></i></button>
-                            <button class="btn-icon edit" @click="editUser(user)"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon delete" @click="confirmDelete(user)"><i class="fas fa-trash"></i></button>
-                        </div>
+                    <div>
+                        <h5 class="m-0 font-weight-bold">All Users</h5>
+                        <small class="text-muted">{{ filteredUsers.length }} shown of {{ users.length }}</small>
                     </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <input v-model.trim="searchQuery" type="text" class="form-control rounded-pill bg-light border-light"
+                        placeholder="Search name or email" style="min-width: 220px;">
+                    <select v-model="selectedRole" class="form-select rounded-pill bg-light border-light">
+                        <option value="">All Roles</option>
+                        <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="bento-item p-4 bg-white h-100 shadow-sm">
-                    <div class="d-flex align-items-center mb-4">
-                        <div class="icon-box bg-light text-dark me-3 border">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h5 class="m-0 font-weight-bold">Staff Members</h5>
-                    </div>
+            <div v-if="filteredUsers.length === 0" class="text-muted small py-3">
+                No users match the current filters.
+            </div>
 
-                    <div v-if="staff.length === 0" class="text-muted small py-3">No staff members assigned.</div>
-
-                    <div v-for="user in staff" :key="user.id"
-                        class="user-card p-3 mb-3 border rounded-4 d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-circle staff-avatar me-3">{{ getInitials(user.name) }}</div>
-                            <div>
-                                <div class="fw-bold">{{ user.name }}</div>
-                                <div class="text-muted small">{{ user.email }}</div>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn-icon view" @click="viewUser(user)"><i class="fas fa-eye"></i></button>
-                            <button class="btn-icon edit" @click="editUser(user)"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon delete" @click="confirmDelete(user)"><i class="fas fa-trash"></i></button>
+            <div v-for="user in filteredUsers" :key="user.id"
+                class="user-card p-3 mb-3 border rounded-4 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-circle me-3">{{ getInitials(user.name) }}</div>
+                    <div>
+                        <div class="fw-bold">{{ user.name }}</div>
+                        <div class="text-muted small">{{ user.email }}</div>
+                        <div class="mt-1">
+                            <span class="badge rounded-pill me-1"
+                                :class="roleSlug(user) === 'admin' ? 'bg-dark' : 'bg-secondary'">
+                                {{ roleLabel(user) }}
+                            </span>
+                            <span class="badge bg-light text-dark border rounded-pill">User ID: {{ user.id }}</span>
                         </div>
                     </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-icon view" @click="viewUser(user)"><i class="fas fa-eye"></i></button>
+                    <button v-if="canUpdateUsers" class="btn-icon edit" @click="editUser(user)"><i class="fas fa-edit"></i></button>
+                    <button v-if="canDeleteUsers" class="btn-icon delete" @click="confirmDelete(user)"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         </div>
@@ -91,9 +81,10 @@
 
                     <div class="mb-4">
                         <label class="small text-muted">Account Role</label>
-                        <select v-model="form.role" class="form-select rounded-pill border-light bg-light">
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
+                        <select v-model="form.role_id" class="form-select rounded-pill border-light bg-light">
+                            <option v-for="role in roles" :key="role.id" :value="role.id">
+                                {{ role.name }}
+                            </option>
                         </select>
                     </div>
 
@@ -114,7 +105,7 @@
                 </div>
                 <h4>{{ selectedUser?.name }}</h4>
                 <p class="text-muted">{{ selectedUser?.email }}</p>
-                <div class="badge bg-dark rounded-pill px-3 py-2 mb-4">{{ selectedUser?.role }}</div>
+                <div class="badge bg-dark rounded-pill px-3 py-2 mb-4">{{ roleLabel(selectedUser || {}) }}</div>
                 <button class="btn btn-light rounded-pill w-100" @click="showViewModal = false">Close</button>
             </div>
         </div>
@@ -129,22 +120,93 @@ export default {
     data() {
         return {
             users: [],
+            roles: [],
+            searchQuery: '',
+            selectedRole: '',
             showAddModal: false,
             showViewModal: false,
             isEditing: false,
             loading: false,
             selectedUser: null,
-            form: { name: '', email: '', password: '', role: 'staff' }
+            form: { name: '', email: '', password: '', role_id: null }
         }
     },
     computed: {
-        admins() { return this.users.filter(u => u.role === 'admin'); },
-        staff() { return this.users.filter(u => u.role === 'staff'); }
+        permissionSlugs() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (!Array.isArray(user.roles)) return [];
+            return user.roles.flatMap(role =>
+                Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
+            );
+        },
+        isAdmin() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const roleSlugs = Array.isArray(user.roles) ? user.roles.map(role => role.slug) : [];
+            return roleSlugs.includes('admin') || user.role === 'admin' || user.is_admin;
+        },
+        canCreateUsers() {
+            return this.isAdmin || this.permissionSlugs.includes('users.create');
+        },
+        canUpdateUsers() {
+            return this.isAdmin || this.permissionSlugs.includes('users.update');
+        },
+        canDeleteUsers() {
+            return this.isAdmin || this.permissionSlugs.includes('users.delete');
+        },
+        roleOptions() {
+            const roleNames = this.users.map(user => this.roleLabel(user));
+            return [...new Set(roleNames)].sort();
+        },
+        filteredUsers() {
+            const query = this.searchQuery.toLowerCase();
+            return this.users.filter(user => {
+                const role = this.roleLabel(user);
+                const matchesRole = !this.selectedRole || role === this.selectedRole;
+                const matchesText =
+                    !query ||
+                    user.name.toLowerCase().includes(query) ||
+                    user.email.toLowerCase().includes(query);
+                return matchesRole && matchesText;
+            });
+        }
     },
     mounted() {
         this.fetchUsers();
+        this.fetchRoles();
     },
     methods: {
+        async syncCurrentUserPermissions() {
+            try {
+                const response = await this.$axios.get('/user');
+                localStorage.setItem('user', JSON.stringify(response.data));
+            } catch (err) {
+                console.error("Unable to refresh session user permissions", err);
+            }
+        },
+        roleSlug(user) {
+            if (Array.isArray(user.roles) && user.roles.length > 0) {
+                return user.roles[0].slug;
+            }
+            return user.role || 'staff';
+        },
+        roleLabel(user) {
+            if (Array.isArray(user.roles) && user.roles.length > 0) {
+                return user.roles[0].name;
+            }
+            return user.role || 'Staff';
+        },
+        async fetchRoles() {
+            try {
+                const res = await this.$axios.get('/roles');
+                this.roles = res.data.filter(role => role.is_active);
+                if (!this.form.role_id && this.roles.length > 0) {
+                    const staffRole = this.roles.find(role => role.slug === 'staff');
+                    this.form.role_id = staffRole ? staffRole.id : this.roles[0].id;
+                }
+            } catch (err) {
+                console.error("Roles fetch failed", err);
+            }
+        },
         async fetchUsers() {
             try {
                 const res = await this.$axios.get('/users');
@@ -156,7 +218,8 @@ export default {
         },
         openCreateModal() {
             this.isEditing = false;
-            this.form = { name: '', email: '', password: '', role: 'staff' };
+            const staffRole = this.roles.find(role => role.slug === 'staff');
+            this.form = { name: '', email: '', password: '', role_id: staffRole ? staffRole.id : (this.roles[0]?.id || null) };
             this.showAddModal = true;
         },
         viewUser(user) {
@@ -167,7 +230,12 @@ export default {
             this.isEditing = true;
             this.selectedUser = user;
             // Clear password so user doesn't think they are editing an encrypted string
-            this.form = { ...user, password: '' }; 
+            this.form = {
+                name: user.name,
+                email: user.email,
+                password: '',
+                role_id: user.roles?.[0]?.id || null,
+            };
             this.showAddModal = true;
         },
         async saveUser() {
@@ -178,6 +246,7 @@ export default {
                 } else {
                     await this.$axios.post('/users', this.form);
                 }
+                await this.syncCurrentUserPermissions();
                 this.closeModal();
                 this.fetchUsers();
             } catch (err) {
@@ -188,14 +257,20 @@ export default {
         },
         async confirmDelete(user) {
             if (confirm(`Remove ${user.name} from the system?`)) {
-                await this.$axios.delete(`/users/${user.id}`);
-                this.fetchUsers();
+                try {
+                    await this.$axios.delete(`/users/${user.id}`);
+                    await this.syncCurrentUserPermissions();
+                    this.fetchUsers();
+                } catch (err) {
+                    alert(err.response?.data?.message || 'Unable to delete user');
+                }
             }
         },
         closeModal() {
             this.showAddModal = false;
             this.isEditing = false;
-            this.form = { name: '', email: '', password: '', role: 'staff' };
+            const staffRole = this.roles.find(role => role.slug === 'staff');
+            this.form = { name: '', email: '', password: '', role_id: staffRole ? staffRole.id : (this.roles[0]?.id || null) };
         },
         getInitials(name) {
             if (!name) return '';

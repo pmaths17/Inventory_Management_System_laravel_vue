@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             // 'admin' => \App\Http\Middleware\IsAdmin::class,
             'admin' => \App\Http\Middleware\CheckAdmin::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
 
         //
@@ -59,4 +60,3 @@ return Application::configure(basePath: dirname(__DIR__))
 // );
 
 // return $app;
-

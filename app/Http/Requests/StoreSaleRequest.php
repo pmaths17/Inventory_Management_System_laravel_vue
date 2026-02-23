@@ -41,25 +41,59 @@ class StoreSaleRequest extends FormRequest
             'items.*.price' => 'required|numeric|min:0',
         ];
     }
+    // public function withValidator($validator)
+    // {
+    //     $validator->after(function ($validator) {
+    //         foreach ($this->items as $item) {
+    //             $product = Product::find($item['product_id']);
+    //             if ($item['price'] != $product->sale_price) {
+    //                 $validator->errors()->add(
+    //                     'items',
+    //                     "Price for product ID {$product->id} must be {$product->sale_price}"
+    //                 );
+    //             }
+    //             // if ($item['quantity'] > $product->current_stock) {
+    //             if ($item['quantity'] > $product->available_stock) {
+    //                 $validator->errors()->add(
+    //                     'items',
+    //                     "Insufficient stock for product ID {$product->id}. Available: {$product->current_stock}. Locked Stock:{$product->available_stock}"
+    //                 );
+    //             }
+    //         }
+    //     });
+    // }
     public function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            foreach ($this->items as $item) {
-                $product = Product::find($item['product_id']);
-                if ($item['price'] != $product->sale_price) {
-                    $validator->errors()->add(
-                        'items',
-                        "Price for product ID {$product->id} must be {$product->sale_price}"
-                    );
-                }
-                // if ($item['quantity'] > $product->current_stock) {
-                if ($item['quantity'] > $product->available_stock) {
-                    $validator->errors()->add(
-                        'items',
-                        "Insufficient stock for product ID {$product->id}. Available: {$product->current_stock}"
-                    );
-                }
+{
+    $validator->after(function ($validator) {
+        // Collect all items to check if user didn't select same product twice
+        foreach ($this->items as $item) {
+            $product = Product::find($item['product_id']);
+            
+            if (!$product) continue;
+
+            // 1. Price Check
+            if ($item['price'] != $product->sale_price) {
+                $validator->errors()->add(
+                    'items',
+                    "Price for {$product->name} must be {$product->sale_price}"
+                );
             }
-        });
-    }
+
+            // 2. Stock Check
+            // available_stock is usually (current_stock - locked_stock)
+            if ($item['quantity'] > $product->available_stock) {
+                $locked = $product->locked_stock; // Reserved by other draft sales
+                $actualAvailable = $product->available_stock;
+
+                $validator->errors()->add(
+                    'items',
+                    "Insufficient stock for {$product->name}. " . 
+                    "Total in warehouse: {$product->current_stock}, " .
+                    "Locked in other drafts: {$locked}, " .
+                    "Truly Available: {$actualAvailable}."
+                );
+            }
+        }
+    });
+}
 }

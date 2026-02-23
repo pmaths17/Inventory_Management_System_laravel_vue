@@ -41,7 +41,7 @@
               v-model="form.password"
               placeholder="Enter your password" 
               required 
-              minlength="8"
+              minlength="6"
             />
           </div>
 
@@ -58,8 +58,8 @@
 
         <div class="text-center mt-4">
           <p class="text-muted small">
-            Don't have an account?
-            <router-link to="/register" class="register-link">Register here</router-link>
+            Don't have an account? Contact Admin!
+            <!-- <router-link to="/register" class="register-link">Register here</router-link> -->
           </p>
         </div>
       </div>
@@ -69,6 +69,7 @@
 
 <script>
 import authApi from '@/services/authApi.js'; 
+import api from '@/services/api.js';
 
 export default {
   name: 'Login',
@@ -91,8 +92,8 @@ export default {
         this.error = "Please enter a valid email address.";
         return false;
       }
-      if (this.form.password.length < 8) {
-        this.error = "Password must be at least 8 characters long.";
+      if (this.form.password.length < 6) {
+        this.error = "Password must be at least 6 characters long.";
         return false;
       }
       return true;
@@ -107,11 +108,11 @@ export default {
       
       try {
         await authApi.get('/sanctum/csrf-cookie');
-        await authApi.post('/login', {
+        await api.post('/login', {
           email: this.form.email,
           password: this.form.password,
         });
-        const userResponse = await authApi.get('/api/user');
+        const userResponse = await api.get('/user');
         localStorage.setItem('user', JSON.stringify(userResponse.data));
         this.$router.push('/dashboard');
       } catch (error) {

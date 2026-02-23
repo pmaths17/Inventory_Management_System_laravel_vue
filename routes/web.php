@@ -1,8 +1,6 @@
 <?php
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Api\AuthController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -27,9 +25,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// require __DIR__.'/auth.php';
-Route::post('/login', [AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->get('/user', fn (Request $r) => $r->user());
+require __DIR__.'/auth.php';
+
+Route::match(['get', 'post'], '/register', function () {
+    abort(404);
+});
+
 Route::get('/{any}', function () {
     return view('app'); // Or whatever your main blade file is named
 })->where('any', '.*');

@@ -6,7 +6,7 @@
           <h2 class="dashboard-title">Inventory <br> Management</h2>
           <p class="text-muted small">You have {{ pagination.total }} products in your catalog</p>
         </div>
-        <button v-if="isAdmin" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+        <button v-if="canCreateProducts" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>Add Product
         </button>
       </div>
@@ -51,7 +51,7 @@
                 <th class="border-0 text-uppercase small text-muted text-end">Purchase Price</th>
                 <th class="border-0 text-uppercase small text-muted text-end">Sale Price</th>
                 <th class="border-0 text-uppercase small text-muted text-center">Locked Stock</th>
-                <th v-if="isAdmin" class="pe-4 border-0 text-uppercase small text-muted text-end">Actions</th>
+                <th v-if="canUpdateProducts || canDeleteProducts" class="pe-4 border-0 text-uppercase small text-muted text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -83,11 +83,11 @@
                 <!-- Locked Stock -->
                 <td class="text-center">{{ product.locked_stock }}</td>
                 <!-- Action Buttons -->
-                <td v-if="isAdmin" class="pe-4 text-end">
+                <td v-if="canUpdateProducts || canDeleteProducts" class="pe-4 text-end">
                   <div class="action-buttons">
                     <button class="btn-icon view" @click="viewProduct(product)"><i class="fas fa-eye"></i></button>
-                    <button class="btn-icon edit" @click="editProduct(product)"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon delete" @click="confirmDelete(product)"><i
+                    <button v-if="canUpdateProducts" class="btn-icon edit" @click="editProduct(product)"><i class="fas fa-edit"></i></button>
+                    <button v-if="canDeleteProducts" class="btn-icon delete" @click="confirmDelete(product)"><i
                         class="fas fa-trash"></i></button>
                   </div>
                 </td>
@@ -238,7 +238,6 @@ export default {
   components: { MainLayout },
   data() {
     return {
-      sortBy: 'id',
       products: [],
       loading: false,
       saving: false,
@@ -265,8 +264,24 @@ export default {
   computed: {
     isAdmin() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      // Adjust this check based on how your backend sends the role (e.g., 'admin' vs 'staff')
-      return user.role === 'admin';
+      const roleSlugs = Array.isArray(user.roles) ? user.roles.map(role => role.slug) : [];
+      return roleSlugs.includes('admin') || user.role === 'admin' || user.is_admin;
+    },
+    permissionSlugs() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!Array.isArray(user.roles)) return [];
+      return user.roles.flatMap(role =>
+        Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
+      );
+    },
+    canCreateProducts() {
+      return this.isAdmin || this.permissionSlugs.includes('products.create');
+    },
+    canUpdateProducts() {
+      return this.isAdmin || this.permissionSlugs.includes('products.update');
+    },
+    canDeleteProducts() {
+      return this.isAdmin || this.permissionSlugs.includes('products.delete');
     },
     visiblePages() {
       const pages = [];
