@@ -15,12 +15,16 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
-    return $request->user()->load('roles.permissions');
+    return $request->user()->load([
+        'roles' => function ($query) {
+            $query->where('roles.is_active', true)->with('permissions');
+        },
+    ]);
 });
 
 
 // AUTH ROUTES (public)
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {

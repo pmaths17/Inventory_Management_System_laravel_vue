@@ -111,6 +111,7 @@
 
 <script>
 import MainLayout from '../Layouts/MainLayout.vue';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
     name: 'RolesPermissions',
@@ -133,23 +134,17 @@ export default {
         };
     },
     computed: {
-        isAdmin() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const roleSlugs = Array.isArray(user.roles) ? user.roles.map(role => role.slug) : [];
-            return roleSlugs.includes('admin') || user.role === 'admin' || user.is_admin;
+        currentUser() {
+            return getStoredUser() || {};
         },
-        permissionSlugs() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (!Array.isArray(user.roles)) return [];
-            return user.roles.flatMap(role =>
-                Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
-            );
+        isAdmin() {
+            return isAdminUser(this.currentUser);
         },
         canCreateRoles() {
-            return this.isAdmin || this.permissionSlugs.includes('roles.create');
+            return hasPermission(this.currentUser, 'roles.create');
         },
         canUpdateRoles() {
-            return this.isAdmin || this.permissionSlugs.includes('roles.update');
+            return hasPermission(this.currentUser, 'roles.update');
         },
         canSubmitRole() {
             if (this.editingRoleId) {
@@ -215,9 +210,11 @@ export default {
             }
         },
         openCreateRoleModal() {
+            if (!this.canCreateRoles) return;
             this.resetForm();
         },
         editRole(role) {
+            if (!this.canUpdateRoles) return;
             this.editingRoleId = role.id;
             this.form = {
                 name: role.name,
@@ -255,6 +252,7 @@ export default {
             }
         },
         async toggleArchive(role) {
+            if (!this.canUpdateRoles) return;
             const nextActive = !role.is_active;
             try {
                 await this.$axios.put(`/roles/${role.id}`, {

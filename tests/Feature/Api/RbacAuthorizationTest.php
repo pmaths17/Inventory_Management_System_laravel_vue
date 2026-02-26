@@ -57,7 +57,7 @@ class RbacAuthorizationTest extends TestCase
 
         $this->putJson("/api/users/{$admin->id}", [
             'name' => $admin->name,
-            'role_id' => $staffRole->id,
+            'role_ids' => [$staffRole->id],
             'password' => '',
         ])->assertStatus(422);
     }
@@ -100,10 +100,10 @@ class RbacAuthorizationTest extends TestCase
 
         $this->putJson("/api/users/{$staff->id}", [
             'name' => $staff->name,
-            'role_id' => $archivedRole->id,
+            'role_ids' => [$archivedRole->id],
             'password' => '',
         ])->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Cannot assign an archived role.']);
+            ->assertJsonFragment(['message' => 'Cannot assign archived roles.']);
     }
 
     public function test_admin_role_must_keep_all_permissions(): void
@@ -143,5 +143,72 @@ class RbacAuthorizationTest extends TestCase
         ]);
 
         $this->assertGreaterThanOrEqual(1, AuditLog::count());
+    }
+
+    public function test_user_with_multiple_roles_gets_union_of_permissions(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $viewerRole = Role::where('slug', 'viewer')->firstOrFail();
+        $staffRole = Role::where('slug', 'staff')->firstOrFail();
+
+        $target = User::factory()->create(['role' => 'staff']);
+        $target->roles()->sync([$viewerRole->id]);
+
+        Sanctum::actingAs($admin);
+        $this->putJson("/api/users/{$target->id}", [
+            'name' => $target->name,
+            'role_ids' => [$viewerRole->id, $staffRole->id],
+            'password' => '',
+        ])->assertOk();
+
+        Sanctum::actingAs($target->fresh());
+        $this->getJson('/api/sales')->assertOk();
+        $this->getJson('/api/reports/dashboard-summary')->assertOk();
+    }
+
+    public function test_api_user_endpoint_returns_only_active_roles(): void
+    {
+        $viewer = $this->createUserWithRole('viewer');
+        $archivedRole = Role::create([
+            'name' => 'Old Role',
+            'slug' => 'old-role',
+            'is_system' => false,
+            'is_active' => false,
+        ]);
+        $viewer->roles()->syncWithoutDetaching([$archivedRole->id]);
+
+        Sanctum::actingAs($viewer->fresh());
+        $response = $this->getJson('/api/user')->assertOk();
+
+        $returnedRoleSlugs = collect($response->json('roles'))->pluck('slug')->all();
+        $this->assertContains('viewer', $returnedRoleSlugs);
+        $this->assertNotContains('old-role', $returnedRoleSlugs);
+    }
+
+    public function test_permission_cache_is_invalidated_after_role_permission_change(): void
+    {
+        $admin = $this->createUserWithRole('admin');
+        $staff = $this->createUserWithRole('staff');
+        $staffRole = Role::where('slug', 'staff')->firstOrFail();
+        $permissions = $staffRole->permissions()->pluck('permissions.id')->all();
+        $productsViewPermissionId = Permission::where('slug', 'products.view')->value('id');
+        $reducedPermissions = array_values(array_filter(
+            $permissions,
+            fn ($permissionId) => (int) $permissionId !== (int) $productsViewPermissionId
+        ));
+
+        Sanctum::actingAs($staff);
+        $this->getJson('/api/products')->assertOk();
+
+        Sanctum::actingAs($admin);
+        $this->putJson("/api/roles/{$staffRole->id}", [
+            'name' => $staffRole->name,
+            'slug' => $staffRole->slug,
+            'is_active' => true,
+            'permission_ids' => $reducedPermissions,
+        ])->assertOk();
+
+        Sanctum::actingAs($staff->fresh());
+        $this->getJson('/api/products')->assertForbidden();
     }
 }

@@ -40,6 +40,9 @@
     </div> -->
     <div class="main-content">
       <div class="content-wrapper">
+        <div v-if="hasNoActiveRoles" class="alert alert-warning py-2 small mb-3">
+          Your account has no active role. Access is limited. Contact an administrator.
+        </div>
         <slot></slot>
       </div>
     </div>
@@ -48,6 +51,7 @@
 
 <script>
 import api from '@/services/api.js';
+import { getPermissionSlugs, getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'MainLayout',
@@ -55,24 +59,21 @@ export default {
     return {
       loggingOut: false,
       isSidebarCollapsed: localStorage.getItem('sidebarStatus') === 'true',
-      user: JSON.parse(localStorage.getItem('user') || '{}')
+      user: getStoredUser() || {}
     };
   },
   computed: {
     isAdmin() {
-      const roleSlugs = Array.isArray(this.user?.roles) ? this.user.roles.map(role => role.slug) : [];
-      return roleSlugs.includes('admin') || this.user?.role === 'admin' || this.user?.is_admin;
+      return isAdminUser(this.user);
     },
     permissionSlugs() {
-      if (!Array.isArray(this.user?.roles)) {
-        return [];
-      }
-      return this.user.roles.flatMap(role =>
-        Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
-      );
+      return getPermissionSlugs(this.user);
+    },
+    hasNoActiveRoles() {
+      return Array.isArray(this.user?.roles) && this.user.roles.length === 0;
     },
     menu() {
-      const can = (permission) => this.isAdmin || this.permissionSlugs.includes(permission);
+      const can = (permission) => hasPermission(this.user, permission);
       const items = [
         { to: '/dashboard', label: 'Dashboard', icon: 'fas fa-chart-line' },
         { to: '/products', label: 'Products', icon: 'fas fa-box', permission: 'products.view' },

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
+use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PermissionController extends Controller
@@ -25,16 +27,20 @@ class PermissionController extends Controller
             'module' => 'nullable|string|max:100',
         ]);
 
-        $permission = Permission::create([
-            'name' => $data['name'],
-            'slug' => $data['slug'] ?? Str::slug($data['name'], '.'),
-            'module' => $data['module'] ?? null,
-        ]);
+        $permission = DB::transaction(function () use ($data, $request) {
+            $permission = Permission::create([
+                'name' => $data['name'],
+                'slug' => $data['slug'] ?? Str::slug($data['name'], '.'),
+                'module' => $data['module'] ?? null,
+            ]);
 
-        AuditLogger::log($request, 'permission.created', 'permission', $permission->id, [
-            'slug' => $permission->slug,
-            'module' => $permission->module,
-        ]);
+            AuditLogger::log($request, 'permission.created', 'permission', $permission->id, [
+                'slug' => $permission->slug,
+                'module' => $permission->module,
+            ]);
+
+            return $permission;
+        });
 
         return response()->json([
             'message' => 'Permission created successfully',
@@ -57,16 +63,19 @@ class PermissionController extends Controller
             'module' => 'nullable|string|max:100',
         ]);
 
-        $permission->update([
-            'name' => $data['name'],
-            'slug' => $data['slug'] ?? $permission->slug,
-            'module' => $data['module'] ?? $permission->module,
-        ]);
+        DB::transaction(function () use ($data, $request, $permission) {
+            $permission->update([
+                'name' => $data['name'],
+                'slug' => $data['slug'] ?? $permission->slug,
+                'module' => $data['module'] ?? $permission->module,
+            ]);
 
-        AuditLogger::log($request, 'permission.updated', 'permission', $permission->id, [
-            'slug' => $permission->slug,
-            'module' => $permission->module,
-        ]);
+            AuditLogger::log($request, 'permission.updated', 'permission', $permission->id, [
+                'slug' => $permission->slug,
+                'module' => $permission->module,
+            ]);
+        });
+        User::forgetPermissionCacheForPermission($permission->id);
 
         return response()->json([
             'message' => 'Permission updated successfully',
@@ -84,10 +93,13 @@ class PermissionController extends Controller
             ], 422);
         }
 
-        AuditLogger::log(request(), 'permission.deleted', 'permission', $permission->id, [
-            'slug' => $permission->slug,
-        ]);
-        $permission->delete();
+        DB::transaction(function () use ($permission) {
+            AuditLogger::log(request(), 'permission.deleted', 'permission', $permission->id, [
+                'slug' => $permission->slug,
+            ]);
+            $permission->delete();
+        });
+        User::forgetPermissionCacheForPermission($permission->id);
 
         return response()->json([
             'message' => 'Permission deleted successfully',

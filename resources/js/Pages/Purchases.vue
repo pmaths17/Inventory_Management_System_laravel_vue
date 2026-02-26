@@ -7,7 +7,7 @@
           <h2 class="dashboard-title">Purchases <br> Management</h2>
           <p class="text-muted small">You have {{ pagination.total }} purchase records</p>
         </div>
-        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+        <button v-if="canCreatePurchases" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>New Purchase
         </button>
       </div>
@@ -50,7 +50,7 @@
           <i class="fas fa-shopping-cart mb-3 text-muted" style="font-size: 3rem;"></i>
           <h5 class="text-muted">No purchases found</h5>
           <p class="text-muted">Start by recording your first purchase</p>
-          <button class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
+          <button v-if="canCreatePurchases" class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
             <i class="fas fa-plus mr-2"></i>New Purchase
           </button>
         </div>
@@ -151,6 +151,7 @@
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Supplier <span class="text-danger">*</span></label>
                     <select class="form-select bg-light border-0 rounded-pill px-3" v-model="form.supplier_id" required
+                      :disabled="!canCreatePurchases"
                       style="height: 45px;">
                       <option value="">Select Supplier</option>
                       <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
@@ -161,6 +162,7 @@
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Purchase Date <span class="text-danger">*</span></label>
                     <input type="date" class="form-control bg-light border-0 rounded-pill px-3"
+                      :disabled="!canCreatePurchases"
                       v-model="form.purchase_date" required style="height: 45px;" />
                   </div>
                 </div>
@@ -169,7 +171,7 @@
                 <div class="mb-4">
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="font-weight-bold mb-0">Purchase Items</h6>
-                    <button type="button" class="btn btn-sm btn-dark rounded-pill px-3" @click="addItem">
+                    <button v-if="canCreatePurchases" type="button" class="btn btn-sm btn-dark rounded-pill px-3" @click="addItem">
                       <i class="fas fa-plus mr-1"></i>Add Item
                     </button>
                   </div>
@@ -189,6 +191,7 @@
                         <tr v-for="(item, index) in form.items" :key="index">
                           <td>
                             <select class="form-select form-select-sm bg-light border-0 rounded-pill"
+                              :disabled="!canCreatePurchases"
                               v-model="item.product_id" @change="updateProductPrice(index)" required>
                               <option value="">Select Product</option>
                               <option v-for="product in products" :key="product.id" :value="product.id">
@@ -198,6 +201,7 @@
                           </td>
                           <td>
                             <input type="number" class="form-control form-control-sm bg-light border-0 rounded-pill"
+                              :disabled="!canCreatePurchases"
                               v-model.number="item.quantity" @input="calculateSubtotal(index)" min="1" required />
                           </td>
                           <td>
@@ -211,7 +215,7 @@
                             </div>
                           </td>
                           <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-icon delete" @click="removeItem(index)"
+                            <button v-if="canCreatePurchases" type="button" class="btn btn-sm btn-icon delete" @click="removeItem(index)"
                               :disabled="form.items.length === 1">
                               <i class="fas fa-trash"></i>
                             </button>
@@ -230,7 +234,7 @@
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-end gap-2 mt-4">
+                <div v-if="canCreatePurchases" class="d-flex justify-content-end gap-2 mt-4">
                   <button type="submit" class="btn btn-dark rounded-pill px-4"
                     :disabled="saving || form.items.length === 0">
                     <span v-if="saving">
@@ -348,6 +352,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import api from '@/services/api.js';
 import { Modal } from 'bootstrap';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Purchases',
@@ -388,6 +393,15 @@ export default {
     };
   },
   computed: {
+    currentUser() {
+      return getStoredUser() || {};
+    },
+    isAdmin() {
+      return isAdminUser(this.currentUser);
+    },
+    canCreatePurchases() {
+      return hasPermission(this.currentUser, 'purchases.create');
+    },
     visiblePages() {
       const pages = [];
       const current = this.pagination.current_page;
@@ -493,6 +507,7 @@ export default {
       },
 
       openAddModal() {
+        if (!this.canCreatePurchases) return;
         this.resetForm();
         const modalEl = document.getElementById('purchaseModal');
         const modal = new Modal(modalEl);
@@ -513,6 +528,7 @@ export default {
       },
 
       addItem() {
+        if (!this.canCreatePurchases) return;
         this.form.items.push({
           product_id: '',
           quantity: 1,
@@ -522,12 +538,14 @@ export default {
       },
 
       removeItem(index) {
+        if (!this.canCreatePurchases) return;
         if (this.form.items.length > 1) {
           this.form.items.splice(index, 1);
         }
       },
 
       updateProductPrice(index) {
+        if (!this.canCreatePurchases) return;
         const item = this.form.items[index];
         const product = this.products.find(p => p.id == item.product_id);
         if (product) {
@@ -546,6 +564,7 @@ export default {
       },
 
     async savePurchase() {
+        if (!this.canCreatePurchases) return;
         this.saving = true;
         try {
           const purchaseData = {

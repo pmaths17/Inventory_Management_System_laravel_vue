@@ -17,7 +17,7 @@ class CheckAdmin
         /** @var User|null $user */
         $user = $request->user();
 
-        if ($user && ($user->hasRole('admin') || $user->role === 'admin')) {
+        if ($user && $user->hasRole('admin')) {
             return $next($request);
         }
 

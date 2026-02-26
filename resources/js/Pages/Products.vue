@@ -232,6 +232,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import api from '@/services/api.js';
 import { Modal } from 'bootstrap';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Products',
@@ -262,26 +263,20 @@ export default {
     };
   },
   computed: {
-    isAdmin() {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const roleSlugs = Array.isArray(user.roles) ? user.roles.map(role => role.slug) : [];
-      return roleSlugs.includes('admin') || user.role === 'admin' || user.is_admin;
+    currentUser() {
+      return getStoredUser() || {};
     },
-    permissionSlugs() {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!Array.isArray(user.roles)) return [];
-      return user.roles.flatMap(role =>
-        Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
-      );
+    isAdmin() {
+      return isAdminUser(this.currentUser);
     },
     canCreateProducts() {
-      return this.isAdmin || this.permissionSlugs.includes('products.create');
+      return hasPermission(this.currentUser, 'products.create');
     },
     canUpdateProducts() {
-      return this.isAdmin || this.permissionSlugs.includes('products.update');
+      return hasPermission(this.currentUser, 'products.update');
     },
     canDeleteProducts() {
-      return this.isAdmin || this.permissionSlugs.includes('products.delete');
+      return hasPermission(this.currentUser, 'products.delete');
     },
     visiblePages() {
       const pages = [];

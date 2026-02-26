@@ -6,7 +6,7 @@
           <h2 class="dashboard-title">Customers <br> Management</h2>
           <p class="text-muted small">You have {{ pagination.total }} customers</p>
         </div>
-        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+        <button v-if="canCreateCustomers" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>New Customer
         </button>
       </div>
@@ -39,7 +39,7 @@
           <i class="fas fa-users mb-3 text-muted" style="font-size: 3rem;"></i>
           <h5 class="text-muted">No customers found</h5>
           <p class="text-muted">Start by adding your first customer</p>
-          <button class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
+          <button v-if="canCreateCustomers" class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
             <i class="fas fa-plus mr-2"></i>New Customer
           </button>
         </div>
@@ -74,10 +74,10 @@
                     <button class="btn-icon view" @click="viewCustomer(customer)" title="View Details">
                       <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-icon edit" @click="editCustomer(customer)" title="Edit Customer">
+                    <button v-if="canUpdateCustomers" class="btn-icon edit" @click="editCustomer(customer)" title="Edit Customer">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-icon delete" @click="confirmDelete(customer)" title="Delete Customer">
+                    <button v-if="canDeleteCustomers" class="btn-icon delete" @click="confirmDelete(customer)" title="Delete Customer">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
@@ -185,10 +185,10 @@
               </div>
 
               <div class="mt-4 d-flex justify-content-between align-items-center">
-                <button class="btn btn-outline-danger rounded-pill px-4" @click="deleteFromView">
+                <button v-if="canDeleteCustomers" class="btn btn-outline-danger rounded-pill px-4" @click="deleteFromView">
                   <i class="fas fa-trash me-2"></i>Delete
                 </button>
-                <button class="btn btn-dark rounded-pill px-4" @click="editFromView">Edit</button>
+                <button v-if="canUpdateCustomers" class="btn btn-dark rounded-pill px-4" @click="editFromView">Edit</button>
               </div>
             </div>
           </div>
@@ -203,6 +203,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import api from '@/services/api.js';
 import { Modal } from 'bootstrap';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Customers',
@@ -225,6 +226,21 @@ export default {
     };
   },
   computed: {
+    currentUser() {
+      return getStoredUser() || {};
+    },
+    isAdmin() {
+      return isAdminUser(this.currentUser);
+    },
+    canCreateCustomers() {
+      return hasPermission(this.currentUser, 'customers.create');
+    },
+    canUpdateCustomers() {
+      return hasPermission(this.currentUser, 'customers.update');
+    },
+    canDeleteCustomers() {
+      return hasPermission(this.currentUser, 'customers.delete');
+    },
     visiblePages() {
       const pages = [];
       const current = this.pagination.current_page;
@@ -294,12 +310,14 @@ export default {
     },
 
     openAddModal() {
+      if (!this.canCreateCustomers) return;
       this.isEditing = false;
       this.resetForm();
       new Modal(document.getElementById('customerModal')).show();
     },
 
     editCustomer(customer) {
+      if (!this.canUpdateCustomers) return;
       this.isEditing = true;
       this.editingId = customer.id;
       this.form = { ...customer };
@@ -318,6 +336,7 @@ export default {
     },
 
     async confirmDelete(customer) {
+      if (!this.canDeleteCustomers) return;
       if (confirm(`Are you sure you want to delete "${customer.name}"?`)) {
         try {
           await api.delete(`/customers/${customer.id}`);
@@ -338,8 +357,13 @@ export default {
     async saveCustomer() {
       this.saving = true;
       try {
-        if (this.isEditing) await api.put(`/customers/${this.editingId}`, this.form);
-        else await api.post('/customers', this.form);
+        if (this.isEditing) {
+          if (!this.canUpdateCustomers) return;
+          await api.put(`/customers/${this.editingId}`, this.form);
+        } else {
+          if (!this.canCreateCustomers) return;
+          await api.post('/customers', this.form);
+        }
         this.closeModal();
         this.fetchCustomers(this.pagination.current_page);
       } catch (error) {

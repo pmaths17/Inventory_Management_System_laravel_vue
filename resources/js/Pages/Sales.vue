@@ -7,7 +7,7 @@
           <h2 class="dashboard-title">Sales <br> Management</h2>
           <p class="text-muted small">You have {{ pagination.total }} sales records</p>
         </div>
-        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+        <button v-if="canCreateSales" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>New Sale
         </button>
       </div>
@@ -51,7 +51,7 @@
           <i class="fas fa-cash-register mb-3 text-muted" style="font-size: 3rem;"></i>
           <h5 class="text-muted">No sales found</h5>
           <p class="text-muted">Start by recording your first sale</p>
-          <button class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
+          <button v-if="canCreateSales" class="btn btn-dark rounded-pill px-4 mt-3" @click="openAddModal">
             <i class="fas fa-plus mr-2"></i>New Sale
           </button>
         </div>
@@ -104,7 +104,7 @@
                       <i class="fas fa-eye"></i>
                     </button>
                     <!-- EDIT DRAFT -->
-                    <button v-if="sale.status === 'draft'" class="btn-icon edit" @click="editDraftSale(sale)"
+                    <button v-if="sale.status === 'draft' && canUpdateSales" class="btn-icon edit" @click="editDraftSale(sale)"
                       title="Edit Draft">
                       <i class="fas fa-edit"></i>
                     </button>
@@ -166,7 +166,7 @@
                 <div class="row mb-4 g-3">
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Customer <span class="text-danger">*</span></label>
-                    <select class="form-select bg-light border-0 rounded-pill px-3" v-model="form.customer_id" required
+                    <select class="form-select bg-light border-0 rounded-pill px-3" v-model="form.customer_id" required :disabled="!canManageSaleForm"
                       style="height: 45px;">
                       <option value="">Select Customer</option>
                       <option v-for="customer in customers" :key="customer.id" :value="customer.id">
@@ -177,6 +177,7 @@
                   <div class="col-md-6">
                     <label class="small text-muted mb-1">Sale Date <span class="text-danger">*</span></label>
                     <input type="date" class="form-control bg-light border-0 rounded-pill px-3" v-model="form.sale_date"
+                      :disabled="!canManageSaleForm"
                       required style="height: 45px;" />
                   </div>
                 </div>
@@ -185,7 +186,7 @@
                 <div class="mb-4">
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="font-weight-bold mb-0">Sale Items</h6>
-                    <button type="button" class="btn btn-sm btn-dark rounded-pill px-3" @click="addItem">
+                    <button v-if="canManageSaleForm" type="button" class="btn btn-sm btn-dark rounded-pill px-3" @click="addItem">
                       <i class="fas fa-plus mr-1"></i>Add Item
                     </button>
                   </div>
@@ -206,6 +207,7 @@
                         <tr v-for="(item, index) in form.items" :key="index">
                           <td>
                             <select class="form-select form-select-sm bg-light border-0 rounded-pill"
+                              :disabled="!canManageSaleForm"
                               v-model="item.product_id" @change="updateProductInfo(index)" required>
                               <option value="">Select Product</option>
                               <option v-for="product in products" :key="product.id" :value="product.id">
@@ -232,6 +234,7 @@
                           </td> -->
                           <td>
                             <input type="number" class="form-control form-control-sm bg-light border-0 rounded-pill"
+                              :disabled="!canManageSaleForm"
                               v-model.number="item.quantity" @input="calculateSubtotal(index)" min="1" required />
                           </td>
 
@@ -246,7 +249,7 @@
                             </div>
                           </td>
                           <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-icon delete" @click="removeItem(index)"
+                            <button v-if="canManageSaleForm" type="button" class="btn btn-sm btn-icon delete" @click="removeItem(index)"
                               :disabled="form.items.length === 1">
                               <i class="fas fa-trash"></i>
                             </button>
@@ -277,7 +280,7 @@
                       Complete Sale
                     </span>
                   </button> -->
-                  <div class="btn-group" role="group">
+                  <div v-if="canManageSaleForm" class="btn-group" role="group">
                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
                       :disabled="saving || form.items.length === 0 || hasInsufficientStock" @click="saveSale('draft')">
                       <span v-if="saving && saveType === 'draft'">
@@ -415,6 +418,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import api from '@/services/api.js';
 import { Modal } from 'bootstrap';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Sales',
@@ -458,6 +462,21 @@ export default {
     };
   },
   computed: {
+    currentUser() {
+      return getStoredUser() || {};
+    },
+    isAdmin() {
+      return isAdminUser(this.currentUser);
+    },
+    canCreateSales() {
+      return hasPermission(this.currentUser, 'sales.create');
+    },
+    canUpdateSales() {
+      return hasPermission(this.currentUser, 'sales.update');
+    },
+    canManageSaleForm() {
+      return this.isEditingDraft ? this.canUpdateSales : this.canCreateSales;
+    },
     visiblePages() {
       const pages = [];
       const current = this.pagination.current_page;
@@ -481,6 +500,7 @@ export default {
   },
   methods: {
     async editDraftSale(sale) {
+      if (!this.canUpdateSales) return;
       try {
         this.isEditingDraft = true;
         this.editingSaleId = sale.id;
@@ -609,6 +629,7 @@ export default {
     },
 
     openAddModal() {
+      if (!this.canCreateSales) return;
       this.resetForm();
       const modalEl = document.getElementById('saleModal');
       const modal = new Modal(modalEl);
@@ -629,6 +650,7 @@ export default {
     },
 
     addItem() {
+      if (!this.canManageSaleForm) return;
       this.form.items.push({
         product_id: '',
         quantity: 1,
@@ -639,12 +661,14 @@ export default {
     },
 
     removeItem(index) {
+      if (!this.canManageSaleForm) return;
       if (this.form.items.length > 1) {
         this.form.items.splice(index, 1);
       }
     },
 
     updateProductInfo(index) {
+      if (!this.canManageSaleForm) return;
       const item = this.form.items[index];
       const product = this.products.find(p => p.id == item.product_id);
       if (product) {
@@ -663,6 +687,7 @@ export default {
       return this.form.items.reduce((total, item) => total + (item.subtotal || 0), 0);
     },
     async saveSale(saveType) {
+      if (!this.canManageSaleForm) return;
       if (saveType !== 'draft' && this.hasInsufficientStock) {
         alert('Some items exceed available stock. Please adjust quantities.');
         return;

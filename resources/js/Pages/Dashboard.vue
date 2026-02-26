@@ -98,6 +98,7 @@
 <script>
 import MainLayout from '../Layouts/MainLayout.vue';
 import VueApexCharts from 'vue-apexcharts';
+import { hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Dashboard',
@@ -139,16 +140,10 @@ export default {
   },
   computed: {
     isAdmin() {
-      const roleSlugs = Array.isArray(this.user?.roles) ? this.user.roles.map(role => role.slug) : [];
-      return roleSlugs.includes('admin') || this.user?.role === 'admin' || this.user?.is_admin;
+      return isAdminUser(this.user);
     },
     canViewReports() {
-      const permissionSlugs = Array.isArray(this.user?.roles)
-        ? this.user.roles.flatMap(role =>
-          Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
-        )
-        : [];
-      return this.isAdmin || permissionSlugs.includes('reports.view');
+      return hasPermission(this.user, 'reports.view');
     }
   },
 

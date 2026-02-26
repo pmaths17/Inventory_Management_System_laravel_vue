@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 
 class AuthController extends Controller
@@ -16,6 +17,10 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
         if (!Auth::attempt($credentials)) {
+            Log::warning('Login failed', [
+                'email' => (string) $request->input('email', ''),
+                'ip' => $request->ip(),
+            ]);
             return response()->json([
                 'message' => 'Invalid credentials'
             ], 401);
@@ -27,9 +32,21 @@ class AuthController extends Controller
     }
     public function logout(Request $request)
     {
-        Auth::logout(); // log out the user
-        $request->session()->invalidate();       // invalidate session
-        $request->session()->regenerateToken();  // prevent CSRF attacks
+        // For SPA/session auth, explicitly log out via the web guard.
+        if (Auth::guard('web')->check()) {
+            Auth::guard('web')->logout();
+        }
+
+        // For token-based Sanctum auth, revoke current token if present.
+        if ($request->user() && $request->user()->currentAccessToken()) {
+            $request->user()->currentAccessToken()->delete();
+        }
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
         return response()->noContent(); // 204 OK
     }
 }

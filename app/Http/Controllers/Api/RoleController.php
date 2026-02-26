@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Permission;
 use App\Models\Role;
+use App\Models\User;
+use App\Services\Authorization\RoleManagementPolicy;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class RoleController extends Controller
 {
+    public function __construct(
+        private readonly RoleManagementPolicy $policy
+    ) {
+    }
+
     public function index()
     {
         return response()->json(
@@ -31,21 +38,25 @@ class RoleController extends Controller
             'permission_ids.*' => 'integer|exists:permissions,id',
         ]);
 
-        $role = Role::create([
-            'name' => $data['name'],
-            'slug' => $data['slug'] ?? Str::slug($data['name']),
-            'is_active' => $data['is_active'] ?? true,
-            'is_system' => false,
-        ]);
+        $role = DB::transaction(function () use ($data, $request) {
+            $role = Role::create([
+                'name' => $data['name'],
+                'slug' => $data['slug'] ?? Str::slug($data['name']),
+                'is_active' => $data['is_active'] ?? true,
+                'is_system' => false,
+            ]);
 
-        if (!empty($data['permission_ids'])) {
-            $role->permissions()->sync($data['permission_ids']);
-        }
+            if (!empty($data['permission_ids'])) {
+                $role->permissions()->sync($data['permission_ids']);
+            }
 
-        AuditLogger::log($request, 'role.created', 'role', $role->id, [
-            'slug' => $role->slug,
-            'permission_count' => count($data['permission_ids'] ?? []),
-        ]);
+            AuditLogger::log($request, 'role.created', 'role', $role->id, [
+                'slug' => $role->slug,
+                'permission_count' => count($data['permission_ids'] ?? []),
+            ]);
+
+            return $role;
+        });
 
         return response()->json([
             'message' => 'Role created successfully',
@@ -72,44 +83,26 @@ class RoleController extends Controller
             'permission_ids.*' => 'integer|exists:permissions,id',
         ]);
 
-        if ($role->is_system && isset($data['slug']) && $data['slug'] !== $role->slug) {
-            return response()->json([
-                'message' => 'System role slug cannot be changed.',
-            ], 422);
-        }
+        $this->policy->assertCanUpdate($role, $data);
 
-        if ($role->slug === 'admin' && array_key_exists('is_active', $data) && $data['is_active'] === false) {
-            return response()->json([
-                'message' => 'Admin role cannot be archived.',
-            ], 422);
-        }
+        DB::transaction(function () use ($data, $request, $role) {
+            $role->update([
+                'name' => $data['name'],
+                'slug' => $data['slug'] ?? $role->slug,
+                'is_active' => $data['is_active'] ?? $role->is_active,
+            ]);
 
-        if ($role->slug === 'admin' && array_key_exists('permission_ids', $data)) {
-            $required = Permission::query()->pluck('id')->all();
-            $incoming = $data['permission_ids'] ?? [];
-            $missing = array_diff($required, $incoming);
-            if (!empty($missing)) {
-                return response()->json([
-                    'message' => 'Admin role must keep all permissions.',
-                ], 422);
+            if (array_key_exists('permission_ids', $data)) {
+                $role->permissions()->sync($data['permission_ids'] ?? []);
             }
-        }
 
-        $role->update([
-            'name' => $data['name'],
-            'slug' => $data['slug'] ?? $role->slug,
-            'is_active' => $data['is_active'] ?? $role->is_active,
-        ]);
-
-        if (array_key_exists('permission_ids', $data)) {
-            $role->permissions()->sync($data['permission_ids'] ?? []);
-        }
-
-        AuditLogger::log($request, 'role.updated', 'role', $role->id, [
-            'slug' => $role->slug,
-            'is_active' => $role->is_active,
-            'permission_count' => $role->permissions()->count(),
-        ]);
+            AuditLogger::log($request, 'role.updated', 'role', $role->id, [
+                'slug' => $role->slug,
+                'is_active' => $role->is_active,
+                'permission_count' => $role->permissions()->count(),
+            ]);
+        });
+        User::forgetPermissionCacheForRole($role->id);
 
         return response()->json([
             'message' => 'Role updated successfully',
@@ -119,25 +112,18 @@ class RoleController extends Controller
 
     public function destroy($id)
     {
-        $role = Role::withCount('users')->findOrFail($id);
+        $role = Role::findOrFail($id);
+        $affectedUserIds = $role->users()->pluck('users.id')->all();
+        $this->policy->assertCanDelete($role);
 
-        if ($role->is_system) {
-            return response()->json([
-                'message' => 'System roles cannot be deleted.',
-            ], 422);
-        }
-
-        if ($role->users_count > 0) {
-            return response()->json([
-                'message' => 'Reassign users before deleting this role.',
-            ], 422);
-        }
-
-        AuditLogger::log(request(), 'role.deleted', 'role', $role->id, [
-            'slug' => $role->slug,
-        ]);
-        $role->permissions()->detach();
-        $role->delete();
+        DB::transaction(function () use ($role) {
+            AuditLogger::log(request(), 'role.deleted', 'role', $role->id, [
+                'slug' => $role->slug,
+            ]);
+            $role->permissions()->detach();
+            $role->delete();
+        });
+        User::forgetPermissionCacheForUsers($affectedUserIds);
 
         return response()->json([
             'message' => 'Role deleted successfully',

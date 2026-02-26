@@ -125,8 +125,8 @@ class SalesTableSeeder extends Seeder
         $products = Product::all()->keyBy('id');
 
         for ($i = 0; $i < 15; $i++) {
-            // Randomly decide sale status
-            $saleStatus = $faker->randomElement(['draft', 'completed']);
+            // Seed only finalized transactions.
+            $saleStatus = 'completed';
 
             // Insert sale
             $saleId = DB::table('sales')->insertGetId([
@@ -164,11 +164,6 @@ class SalesTableSeeder extends Seeder
                 $subtotal = $product->sale_price * $quantity;
                 $saleTotal += $subtotal;
 
-                // Reserve stock if draft
-                if ($saleStatus === 'draft') {
-                    $product->lockStock($quantity);
-                }
-
                 // Insert sale item
                 SaleItem::create([
                     'sale_id' => $saleId,
@@ -178,25 +173,22 @@ class SalesTableSeeder extends Seeder
                     'subtotal' => $subtotal,
                 ]);
 
-                // If completed, create stock movement and deduct quantity_remaining
-                if ($saleStatus === 'completed') {
-                    StockMovement::create([
-                        'product_id' => $productId,
-                        'quantity' => $quantity,
-                        'type' => 'out',
-                        'reference_type' => 'sale',
-                        'reference_id' => $saleId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                StockMovement::create([
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                    'type' => 'out',
+                    'reference_type' => 'sale',
+                    'reference_id' => $saleId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
-                    // Update quantity_remaining in purchase item
-                    DB::table('purchase_items')
-                        ->where('id', $purchaseItem->id)
-                        ->update([
-                            'quantity_remaining' => $purchaseItem->quantity_remaining - $quantity,
-                        ]);
-                }
+                // Update quantity_remaining in purchase item
+                DB::table('purchase_items')
+                    ->where('id', $purchaseItem->id)
+                    ->update([
+                        'quantity_remaining' => $purchaseItem->quantity_remaining - $quantity,
+                    ]);
             }
 
             // Update total_amount in sale
@@ -206,4 +198,3 @@ class SalesTableSeeder extends Seeder
         }
     }
 }
-

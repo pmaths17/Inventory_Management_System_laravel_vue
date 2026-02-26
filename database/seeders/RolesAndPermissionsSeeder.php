@@ -16,8 +16,8 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         $permissionMap = [
             'products' => ['view', 'create', 'update', 'delete'],
-            'purchases' => ['view', 'create', 'update', 'delete'],
-            'sales' => ['view', 'create', 'update', 'delete'],
+            'purchases' => ['view', 'create'],
+            'sales' => ['view', 'create', 'update'],
             'customers' => ['view', 'create', 'update', 'delete'],
             'suppliers' => ['view', 'create', 'update', 'delete'],
             'reports' => ['view'],
@@ -39,6 +39,23 @@ class RolesAndPermissionsSeeder extends Seeder
             }
         }
 
+        // Remove obsolete permissions that no longer exist in the API surface.
+        $deprecatedSlugs = [
+            'purchases.update',
+            'purchases.delete',
+            'sales.delete',
+        ];
+
+        $deprecatedIds = Permission::query()
+            ->whereIn('slug', $deprecatedSlugs)
+            ->pluck('id')
+            ->all();
+
+        if (!empty($deprecatedIds)) {
+            \DB::table('permission_role')->whereIn('permission_id', $deprecatedIds)->delete();
+            Permission::query()->whereIn('id', $deprecatedIds)->delete();
+        }
+
         $roles = [
             'admin' => [
                 'name' => 'Admin',
@@ -50,7 +67,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'is_system' => true,
                 'permissions' => [
                     'products.view', 'products.create', 'products.update',
-                    'purchases.view', 'purchases.create', 'purchases.update',
+                    'purchases.view', 'purchases.create',
                     'sales.view', 'sales.create', 'sales.update',
                     'customers.view', 'customers.create', 'customers.update',
                     'suppliers.view', 'suppliers.create', 'suppliers.update',

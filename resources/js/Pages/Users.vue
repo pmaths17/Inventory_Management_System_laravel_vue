@@ -40,10 +40,11 @@
                     <div>
                         <div class="fw-bold">{{ user.name }}</div>
                         <div class="text-muted small">{{ user.email }}</div>
-                        <div class="mt-1">
-                            <span class="badge rounded-pill me-1"
-                                :class="roleSlug(user) === 'admin' ? 'bg-dark' : 'bg-secondary'">
-                                {{ roleLabel(user) }}
+                        <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                            <span v-for="role in getUserRoles(user)" :key="`role-${user.id}-${role.slug}`"
+                                class="badge rounded-pill"
+                                :class="role.slug === 'admin' ? 'bg-dark' : 'bg-secondary'">
+                                {{ role.name }}
                             </span>
                             <span class="badge bg-light text-dark border rounded-pill">User ID: {{ user.id }}</span>
                         </div>
@@ -80,16 +81,20 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="small text-muted">Account Role</label>
-                        <select v-model="form.role_id" class="form-select rounded-pill border-light bg-light">
-                            <option v-for="role in roles" :key="role.id" :value="role.id">
-                                {{ role.name }}
-                            </option>
-                        </select>
+                        <label class="small text-muted d-block mb-2">Account Roles</label>
+                        <div class="role-picker rounded-4 border p-2 bg-light">
+                            <div v-if="roles.length === 0" class="small text-muted px-2 py-1">
+                                No active roles available.
+                            </div>
+                            <label v-for="role in roles" :key="role.id" class="role-option">
+                                <input class="role-checkbox" type="checkbox" :value="role.id" v-model="form.role_ids">
+                                <span>{{ role.name }}</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-dark rounded-pill px-4 flex-fill" :disabled="loading">
+                        <button type="submit" class="btn btn-dark rounded-pill px-4 flex-fill" :disabled="loading || form.role_ids.length === 0">
                             {{ loading ? 'Saving...' : (isEditing ? 'Update User' : 'Create User') }}
                         </button>
                         <button type="button" @click="closeModal" class="btn btn-light rounded-pill px-4">Cancel</button>
@@ -105,7 +110,12 @@
                 </div>
                 <h4>{{ selectedUser?.name }}</h4>
                 <p class="text-muted">{{ selectedUser?.email }}</p>
-                <div class="badge bg-dark rounded-pill px-3 py-2 mb-4">{{ roleLabel(selectedUser || {}) }}</div>
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                    <span v-for="role in getUserRoles(selectedUser || {})" :key="`view-role-${role.slug}`"
+                        class="badge rounded-pill px-3 py-2" :class="role.slug === 'admin' ? 'bg-dark' : 'bg-secondary'">
+                        {{ role.name }}
+                    </span>
+                </div>
                 <button class="btn btn-light rounded-pill w-100" @click="showViewModal = false">Close</button>
             </div>
         </div>
@@ -114,6 +124,7 @@
 
 <script>
 import MainLayout from '../Layouts/MainLayout.vue';
+import { getPermissionSlugs, getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
     components: { MainLayout },
@@ -128,40 +139,37 @@ export default {
             isEditing: false,
             loading: false,
             selectedUser: null,
-            form: { name: '', email: '', password: '', role_id: null }
+            form: { name: '', email: '', password: '', role_ids: [] }
         }
     },
     computed: {
+        currentUser() {
+            return getStoredUser() || {};
+        },
         permissionSlugs() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (!Array.isArray(user.roles)) return [];
-            return user.roles.flatMap(role =>
-                Array.isArray(role.permissions) ? role.permissions.map(permission => permission.slug) : []
-            );
+            return getPermissionSlugs(this.currentUser);
         },
         isAdmin() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const roleSlugs = Array.isArray(user.roles) ? user.roles.map(role => role.slug) : [];
-            return roleSlugs.includes('admin') || user.role === 'admin' || user.is_admin;
+            return isAdminUser(this.currentUser);
         },
         canCreateUsers() {
-            return this.isAdmin || this.permissionSlugs.includes('users.create');
+            return hasPermission(this.currentUser, 'users.create');
         },
         canUpdateUsers() {
-            return this.isAdmin || this.permissionSlugs.includes('users.update');
+            return hasPermission(this.currentUser, 'users.update');
         },
         canDeleteUsers() {
-            return this.isAdmin || this.permissionSlugs.includes('users.delete');
+            return hasPermission(this.currentUser, 'users.delete');
         },
         roleOptions() {
-            const roleNames = this.users.map(user => this.roleLabel(user));
+            const roleNames = this.users.flatMap(user => this.getUserRoles(user).map(role => role.name));
             return [...new Set(roleNames)].sort();
         },
         filteredUsers() {
             const query = this.searchQuery.toLowerCase();
             return this.users.filter(user => {
-                const role = this.roleLabel(user);
-                const matchesRole = !this.selectedRole || role === this.selectedRole;
+                const userRoleNames = this.getUserRoles(user).map(role => role.name);
+                const matchesRole = !this.selectedRole || userRoleNames.includes(this.selectedRole);
                 const matchesText =
                     !query ||
                     user.name.toLowerCase().includes(query) ||
@@ -183,25 +191,28 @@ export default {
                 console.error("Unable to refresh session user permissions", err);
             }
         },
-        roleSlug(user) {
-            if (Array.isArray(user.roles) && user.roles.length > 0) {
-                return user.roles[0].slug;
+        defaultRoleIds() {
+            if (!Array.isArray(this.roles) || this.roles.length === 0) {
+                return [];
             }
-            return user.role || 'staff';
+            const staffRole = this.roles.find(role => role.slug === 'staff');
+            return [staffRole ? staffRole.id : this.roles[0].id];
         },
-        roleLabel(user) {
-            if (Array.isArray(user.roles) && user.roles.length > 0) {
-                return user.roles[0].name;
+        getUserRoles(user) {
+            if (Array.isArray(user?.roles) && user.roles.length > 0) {
+                return user.roles;
             }
-            return user.role || 'Staff';
+            if (user?.role) {
+                return [{ id: `legacy-${user.role}`, name: user.role, slug: user.role }];
+            }
+            return [];
         },
         async fetchRoles() {
             try {
                 const res = await this.$axios.get('/roles');
                 this.roles = res.data.filter(role => role.is_active);
-                if (!this.form.role_id && this.roles.length > 0) {
-                    const staffRole = this.roles.find(role => role.slug === 'staff');
-                    this.form.role_id = staffRole ? staffRole.id : this.roles[0].id;
+                if (this.form.role_ids.length === 0 && this.roles.length > 0) {
+                    this.form.role_ids = this.defaultRoleIds();
                 }
             } catch (err) {
                 console.error("Roles fetch failed", err);
@@ -218,8 +229,7 @@ export default {
         },
         openCreateModal() {
             this.isEditing = false;
-            const staffRole = this.roles.find(role => role.slug === 'staff');
-            this.form = { name: '', email: '', password: '', role_id: staffRole ? staffRole.id : (this.roles[0]?.id || null) };
+            this.form = { name: '', email: '', password: '', role_ids: this.defaultRoleIds() };
             this.showAddModal = true;
         },
         viewUser(user) {
@@ -234,17 +244,28 @@ export default {
                 name: user.name,
                 email: user.email,
                 password: '',
-                role_id: user.roles?.[0]?.id || null,
+                role_ids: this.getUserRoles(user)
+                    .map(role => role.id)
+                    .filter(id => typeof id === 'number' && this.roles.some(activeRole => activeRole.id === id)),
             };
+            if (this.form.role_ids.length === 0) {
+                this.form.role_ids = this.defaultRoleIds();
+            }
             this.showAddModal = true;
         },
         async saveUser() {
             this.loading = true;
+            const payload = {
+                name: this.form.name,
+                email: this.form.email,
+                password: this.form.password,
+                role_ids: this.form.role_ids,
+            };
             try {
                 if (this.isEditing) {
-                    await this.$axios.put(`/users/${this.selectedUser.id}`, this.form);
+                    await this.$axios.put(`/users/${this.selectedUser.id}`, payload);
                 } else {
-                    await this.$axios.post('/users', this.form);
+                    await this.$axios.post('/users', payload);
                 }
                 await this.syncCurrentUserPermissions();
                 this.closeModal();
@@ -269,8 +290,7 @@ export default {
         closeModal() {
             this.showAddModal = false;
             this.isEditing = false;
-            const staffRole = this.roles.find(role => role.slug === 'staff');
-            this.form = { name: '', email: '', password: '', role_id: staffRole ? staffRole.id : (this.roles[0]?.id || null) };
+            this.form = { name: '', email: '', password: '', role_ids: this.defaultRoleIds() };
         },
         getInitials(name) {
             if (!name) return '';
@@ -341,6 +361,29 @@ export default {
     width: 400px;
     background: white;
     border: none;
+}
+
+.role-picker {
+    max-height: 170px;
+    overflow-y: auto;
+}
+
+.role-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    margin-bottom: 2px;
+}
+
+.role-option:last-child {
+    margin-bottom: 0;
+}
+
+.role-checkbox {
+    margin: 0;
+    flex: 0 0 auto;
 }
 
 .action-buttons {

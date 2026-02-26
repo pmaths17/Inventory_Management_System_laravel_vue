@@ -10,7 +10,7 @@
             You have {{ pagination.total }} suppliers
           </p>
         </div>
-        <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
+        <button v-if="canCreateSuppliers" class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm" @click="openAddModal">
           <i class="fas fa-plus mr-2"></i>Add Supplier
         </button>
       </div>
@@ -79,10 +79,10 @@
                     <button class="btn-icon view" @click="viewSupplier(supplier)" title="View Details">
                       <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-icon edit" @click="editSupplier(supplier)">
+                    <button v-if="canUpdateSuppliers" class="btn-icon edit" @click="editSupplier(supplier)">
                       <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-icon delete" @click="deleteSupplier(supplier)">
+                    <button v-if="canDeleteSuppliers" class="btn-icon delete" @click="deleteSupplier(supplier)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
@@ -198,10 +198,10 @@
             </div>
 
             <div class="mt-4 d-flex justify-content-between align-items-center">
-              <button class="btn btn-outline-danger rounded-pill px-4" @click="deleteFromView">
+              <button v-if="canDeleteSuppliers" class="btn btn-outline-danger rounded-pill px-4" @click="deleteFromView">
                 <i class="fas fa-trash me-2"></i>Delete
               </button>
-              <button class="btn btn-dark rounded-pill px-4" @click="editFromView">Edit</button>
+              <button v-if="canUpdateSuppliers" class="btn btn-dark rounded-pill px-4" @click="editFromView">Edit</button>
             </div>
           </div>
         </div>
@@ -215,6 +215,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue';
 import api from '@/services/api.js';
 import { Modal } from 'bootstrap';
+import { getStoredUser, hasPermission, isAdminUser } from '@/utils/authz.js';
 
 export default {
   name: 'Suppliers',
@@ -245,6 +246,21 @@ export default {
     };
   },
   computed: {
+    currentUser() {
+      return getStoredUser() || {};
+    },
+    isAdmin() {
+      return isAdminUser(this.currentUser);
+    },
+    canCreateSuppliers() {
+      return hasPermission(this.currentUser, 'suppliers.create');
+    },
+    canUpdateSuppliers() {
+      return hasPermission(this.currentUser, 'suppliers.update');
+    },
+    canDeleteSuppliers() {
+      return hasPermission(this.currentUser, 'suppliers.delete');
+    },
     visiblePages() {
       const pages = [];
       const current = this.pagination.current_page;
@@ -311,6 +327,7 @@ export default {
     },
 
     openAddModal() {
+      if (!this.canCreateSuppliers) return;
       this.resetForm();
       const modalEl = document.getElementById('supplierModal');
       const modal = new Modal(modalEl);
@@ -318,6 +335,7 @@ export default {
     },
 
     editSupplier(supplier) {
+      if (!this.canUpdateSuppliers) return;
       this.form = { ...supplier };
       const modalEl = document.getElementById('supplierModal');
       const modal = new Modal(modalEl);
@@ -347,6 +365,7 @@ export default {
     },
 
     async deleteSupplier(supplier) {
+      if (!this.canDeleteSuppliers) return;
       if (!confirm(`Are you sure you want to delete ${supplier.name}?`)) return;
       try {
         await api.delete(`/suppliers/${supplier.id}`);
@@ -362,9 +381,11 @@ export default {
       this.saving = true;
       try {
         if (this.form.id) {
+          if (!this.canUpdateSuppliers) return;
           await api.put(`/suppliers/${this.form.id}`, this.form);
           alert('Supplier updated successfully');
         } else {
+          if (!this.canCreateSuppliers) return;
           await api.post('/suppliers', this.form);
           alert('Supplier created successfully');
         }
